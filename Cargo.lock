@@ -53,6 +53,7 @@ name = "akd-watch-auditor"
 version = "0.1.0"
 dependencies = [
  "akd",
+ "akd-watch-common",
  "azure_storage",
  "azure_storage_blobs",
  "serde",
@@ -93,6 +94,7 @@ name = "akd-watch-web"
 version = "0.1.0"
 dependencies = [
  "akd",
+ "akd-watch-common",
  "axum",
  "azure_storage",
  "azure_storage_blobs",

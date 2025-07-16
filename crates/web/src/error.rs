@@ -1,3 +1,4 @@
+use akd_watch_common::AkdWatchError;
 use axum::{response::{IntoResponse, Response}, http::StatusCode};
 use thiserror::Error;
 
@@ -8,8 +9,8 @@ pub enum ApiError {
     NotFound,
     #[error("Bad request: {0}")]
     BadRequest(String),
-    #[error("Failed to parse epoch: {0}")]
-    EpochParseError(#[from] std::num::ParseIntError),
+    #[error("{0}")]
+    CommonError(#[from] AkdWatchError),
     #[error("Internal server error")]
     Internal,
 }
@@ -20,7 +21,7 @@ impl IntoResponse for ApiError {
             ApiError::NotFound => (StatusCode::NOT_FOUND, self.to_string()),
             ApiError::BadRequest(e) => (StatusCode::BAD_REQUEST, e),
             ApiError::Internal => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
-            ApiError::EpochParseError(e) => (StatusCode::BAD_REQUEST, format!("Failed to parse epoch: {}", e)),
+            ApiError::CommonError(e) => (StatusCode::BAD_REQUEST, format!("{:?}", e)),
         };
         (status, msg).into_response()
     }

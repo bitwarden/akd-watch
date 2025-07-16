@@ -30,3 +30,10 @@ async fn main() {
         }
     });
 }
+
+pub async fn poll_for_new_epoch(namespace: NamespaceInfo) -> Result<(), WatcherError> {
+    // Placeholder for watching a namespace's log directory
+    // 1. Poll Azure Blob Storage for new blobs
+    // 2. Enqueue audit requests for new blobs
+    Ok(())
+}

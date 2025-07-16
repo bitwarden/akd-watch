@@ -1,30 +1,16 @@
+use akd_watch_common::{AuditVersion, Epoch, NamespaceInfo, NamespaceStatus};
 use axum::Json;
-use serde::{Deserialize, Serialize};
-
-use crate::routes::audits::Epoch;
-
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-pub enum NamespaceStatus {
-    Online,
-    Initialization,
-    Disabled,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct NamespaceInfo {
-    log_directory: Option<String>,
-    last_verified_epoch: Option<Epoch>,
-    status: NamespaceStatus,
-}
 
 pub async fn handle_query_namespace(
     axum::extract::Path(namespace): axum::extract::Path<String>,
 ) -> Json<Option<NamespaceInfo>> {
     // Placeholder: Return list of blobs in the namespace
     Json(NamespaceInfo {
+        name: namespace.clone(),
         log_directory: Some(format!("Namespace: {}", namespace)),
         last_verified_epoch: Some(Epoch::new(42)),
         status: NamespaceStatus::Online,
+        signature_version: AuditVersion::default(),
     }.into())
 }
 

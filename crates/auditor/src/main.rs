@@ -1,6 +1,11 @@
-use std::thread;
 use serde::{Deserialize, Serialize};
+use std::thread;
 use tracing_subscriber;
+
+use akd_watch_common::AuditRequest;
+
+mod error;
+use crate::error::AuditorError;
 
 // Placeholder for audit result type
 #[derive(Clone, Serialize, Deserialize)]
@@ -28,4 +33,16 @@ async fn main() {
         }
     });
     println!("Watcher thread started.");
+}
+
+async fn process_audit_request(request: AuditRequest) -> Result<AuditResult, AuditorError> {
+    // Placeholder for processing an audit request
+    // 1. Download the blob from Azure Blob Storage
+    // 2. Verify the audit proof
+    // 3. Return the result
+    Ok(AuditResult {
+        blob_name: request.blob_name,
+        verified: true, // Placeholder value
+        signature: "placeholder_signature".to_string(),
+    })
 }

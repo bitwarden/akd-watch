@@ -17,3 +17,4 @@ azure_storage_blobs = "0.17"
 tracing = "0.1"
 tracing-subscriber = "0.3"
 thiserror = "1.0"
+akd-watch-common = { workspace = true }
