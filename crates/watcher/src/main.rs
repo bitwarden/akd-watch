@@ -2,7 +2,10 @@ use std::thread;
 use serde::{Deserialize, Serialize};
 use tracing_subscriber;
 
+use akd_watch_common::NamespaceInfo;
+
 use crate::error::WatcherError;
+
 
 mod error;
 

@@ -1,5 +1,5 @@
 [package]
-name = "akd-watch-watcher"
+name = "akd_watch_watcher"
 
 version.workspace = true
 authors.workspace = true
@@ -8,7 +8,6 @@ license.workspace = true
 keywords.workspace = true
 
 [dependencies]
-tokio = { version = "1", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 azure_storage = "0.17"
@@ -16,3 +15,6 @@ azure_storage_blobs = "0.17"
 tracing = "0.1"
 tracing-subscriber = "0.3"
 thiserror = "1.0"
+redis = { workspace = true }
+tokio = { workspace = true }
+akd_watch_common = { workspace = true}
