@@ -1,16 +1,21 @@
-[package]
-name = "akd-watch"
-version = "0.1.0"
-edition = "2024"
+[workspace]
+members = [ "crates/*" ]
 
-[dependencies]
-akd = "0.11.0"
-tokio = { version = "1", features = ["full"] }
-axum = {version = "0.7", features = ["macros"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-azure_storage = "0.17"
-azure_storage_blobs = "0.17"
-tracing = "0.1"
-tracing-subscriber = "0.3"
-thiserror = "1.0"
+[workspace.package]
+edition = "2024"
+version = "0.1.0"
+authors = ["Bitwarden Inc"]
+license = "AGPL-3.0"
+keywords = ["akd", "key transparency"]
+
+
+[workspace.dependencies]
+akd-watch-auditor = { path = "crates/auditor" }
+akd-watch-watcher = { path = "crates/watcher" }
+akd-watch-web = { path = "crates/web" }
+akd-watch-common = { path = "crates/common" }
+thiserror = "2.0.12"
+
+[workspace.lints.clippy]
+unused_async = "deny"
+unwrap_used = "deny"

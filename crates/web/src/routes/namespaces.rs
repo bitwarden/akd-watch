@@ -1,7 +1,7 @@
 use axum::Json;
 use serde::{Deserialize, Serialize};
 
-use crate::web::routes::audits::Epoch;
+use crate::routes::audits::Epoch;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum NamespaceStatus {

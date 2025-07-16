@@ -1,6 +1,6 @@
 use axum::Json;
 use serde::{Deserialize, Serialize};
-use crate::web::error::ApiError;
+use crate::error::ApiError;
 
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(into = "u32")]
