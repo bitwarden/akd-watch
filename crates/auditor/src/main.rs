@@ -1,23 +1,14 @@
 use akd::local_auditing::AuditBlob;
 use anyhow::{Result, anyhow};
 use futures_util::stream::StreamExt;
-use serde::{Deserialize, Serialize};
 use tracing_subscriber;
 
 use akd_watch_common::{
-    configurations::verify_consecutive_append_only, storage::InMemoryStorage, AuditRequest, SignatureStorage
+    AuditRequest, EpochSignature, SignatureStorage, configurations::verify_consecutive_append_only,
+    crypto::SigningKey, storage::InMemoryStorage,
 };
 
 mod error;
-// use crate::error::AuditorError;
-
-// Placeholder for audit result type
-#[derive(Clone, Serialize, Deserialize, Debug)]
-struct AuditResult {
-    blob_name: String,
-    verified: bool,
-    signature: String,
-}
 
 #[tokio::main]
 async fn main() {
@@ -37,9 +28,13 @@ async fn main() {
 
     let storage = InMemoryStorage::new();
 
+    // TODO: Replace with actual signing key retrieval
+    let signing_key = SigningKey::generate();
+
     println!("Listening for audit requests.");
     while let Some(msg) = conn.on_message().next().await {
         let storage = storage.clone();
+        let secret_key = signing_key.clone();
         // spawn a thread to handle each audit request
         tokio::spawn(async move {
             let Ok(audit_request) = AuditRequest::try_from(msg) else {
@@ -48,7 +43,7 @@ async fn main() {
             };
 
             // Process the audit request
-            match process_audit_request(audit_request, storage.clone()).await {
+            match process_audit_request(audit_request, storage.clone(), secret_key).await {
                 Ok(result) => {
                     println!("Audit result: {:?}", result);
                     // TODO: Store the result
@@ -65,8 +60,9 @@ async fn main() {
 
 async fn process_audit_request(
     request: AuditRequest,
-    storage: impl SignatureStorage,
-) -> Result<AuditResult> {
+    mut storage: impl SignatureStorage,
+    mut signing_key: SigningKey,
+) -> Result<()> {
     let blob_name = request.parse_blob_name()?;
 
     // download the blob
@@ -97,18 +93,15 @@ async fn process_audit_request(
     // Generate an epoch signature
     let signature = EpochSignature::sign(
         request.namespace,
-        end_epoch,
+        end_epoch.into(),
         end_hash,
-    );
+        &mut signing_key,
+    )?;
 
-    // Placeholder for processing an audit request
-    // 2. Verify the audit proof
-    // 3. Return the result
-    Ok(AuditResult {
-        blob_name: blob_name.to_string(),
-        verified: true, // Placeholder value
-        signature: "placeholder_signature".to_string(),
-    })
+    // Store the signature
+    storage.set_signature(blob_name.epoch, signature).await;
+
+    Ok(())
 }
 
 pub(crate) async fn get_proof(url: &str, request: &AuditRequest) -> Result<AuditBlob> {

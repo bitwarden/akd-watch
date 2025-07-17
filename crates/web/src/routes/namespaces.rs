@@ -1,4 +1,4 @@
-use akd_watch_common::{AkdConfiguration, AuditVersion, Epoch, NamespaceInfo, NamespaceStatus};
+use akd_watch_common::{ configurations::AkdConfiguration, AuditVersion, Epoch, NamespaceInfo, NamespaceStatus};
 use axum::Json;
 
 pub async fn handle_query_namespace(
