@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{AuditVersion, Epoch};
+use crate::{configurations::AkdConfiguration, AuditVersion, Epoch};
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum NamespaceStatus {
@@ -11,6 +11,7 @@ pub enum NamespaceStatus {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NamespaceInfo {
+    pub configuration: AkdConfiguration,
     pub name: String,
     pub log_directory: Option<String>,
     pub last_verified_epoch: Option<Epoch>,

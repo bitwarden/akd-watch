@@ -18,3 +18,4 @@ thiserror = "1.0"
 redis = { workspace = true }
 tokio = { workspace = true }
 akd_watch_common = { workspace = true}
+akd = {workspace = true}

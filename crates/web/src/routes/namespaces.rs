@@ -1,4 +1,4 @@
-use akd_watch_common::{AuditVersion, Epoch, NamespaceInfo, NamespaceStatus};
+use akd_watch_common::{AkdConfiguration, AuditVersion, Epoch, NamespaceInfo, NamespaceStatus};
 use axum::Json;
 
 pub async fn handle_query_namespace(
@@ -6,6 +6,7 @@ pub async fn handle_query_namespace(
 ) -> Json<Option<NamespaceInfo>> {
     // Placeholder: Return list of blobs in the namespace
     Json(NamespaceInfo {
+        configuration: AkdConfiguration::BitwardenV1Configuration,
         name: namespace.clone(),
         log_directory: Some(format!("Namespace: {}", namespace)),
         last_verified_epoch: Some(Epoch::new(42)),

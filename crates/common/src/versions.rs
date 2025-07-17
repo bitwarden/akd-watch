@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use serde::{Deserialize, Serialize};
 
 use crate::AkdWatchError;
@@ -75,6 +77,18 @@ pub struct Epoch(u64);
 impl Epoch {
     pub fn new(epoch: u64) -> Self {
         Epoch(epoch)
+    }
+}
+
+impl From<u64> for Epoch {
+    fn from(value: u64) -> Self {
+        Epoch(value)
+    }
+}
+
+impl Display for Epoch {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 

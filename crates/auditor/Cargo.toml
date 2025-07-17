@@ -8,7 +8,6 @@ license.workspace = true
 keywords.workspace = true
 
 [dependencies]
-akd = "0.11.0"
 tokio = { workspace = true}
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -19,3 +18,8 @@ tracing-subscriber = "0.3"
 thiserror = "1.0"
 akd_watch_common = { workspace = true }
 redis = { workspace = true }
+akd = {workspace = true}
+akd_core = {workspace = true}
+futures-util = "0.3.31"
+reqwest = "0.12.22"
+anyhow = "1.0.98"

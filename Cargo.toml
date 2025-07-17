@@ -17,6 +17,8 @@ akd_watch_common = { path = "crates/common" }
 thiserror = "2.0.12"
 redis = { version = "0.32.4", features = ["aio", "tokio-comp"] }
 tokio = { version = "1.46.1", features = ["full"] }
+akd = { version = "0.11.0", features = ["whatsapp_v1", "public_auditing"] }
+akd_core = { version = "0.11.0" }
 
 [workspace.lints.clippy]
 unused_async = "deny"
