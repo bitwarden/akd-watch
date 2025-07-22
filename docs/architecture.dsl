@@ -99,6 +99,24 @@ workspace "AKD Watch System" {
       include *
     }
 
+    container akd_watch "akd_watch_web" {
+      include *
+      exclude akd_watch.auditor
+      exclude akd_watch.watcher
+    }
+
+    container akd_watch "akd_watch_auditor" {
+      include *
+      exclude akd_watch.web
+      exclude akd_watch.watcher
+    }
+
+    container akd_watch "akd_watch_watcher" {
+      include *
+      exclude akd_watch.web
+      exclude akd_watch.auditor
+    }
+
     styles {
       theme default
       element "Element" {
