@@ -1,4 +1,3 @@
-use akd::local_auditing::AuditBlob;
 use anyhow::{Result, anyhow};
 use tracing_subscriber;
 
@@ -32,7 +31,6 @@ async fn main() {
             match process_audit_request(audit_request, storage, secret_key, akd).await {
                 Ok(result) => {
                     println!("Audit result: {:?}", result);
-                    // TODO: Store the result
                 }
                 Err(e) => {
                     eprintln!("Error processing audit request: {:?}", e);

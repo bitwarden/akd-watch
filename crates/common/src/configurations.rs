@@ -1,9 +1,6 @@
 use akd::{errors::AkdError, DomainLabel, WhatsAppV1Configuration};
 use serde::{Deserialize, Serialize};
 
-use crate::{AkdWatchError, Epoch};
-
-
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum AkdConfiguration {
     WhatsAppV1Configuration,

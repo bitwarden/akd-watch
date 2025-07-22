@@ -2,7 +2,6 @@ use ed25519_dalek::ed25519::signature::SignerMut;
 use ed25519_dalek::Verifier;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use std::future::Future;
 
 use crate::{crypto::{SigningKey, VerifyingKey}, AkdWatchError, Ciphersuite, Epoch, NamespaceInfo};
 
