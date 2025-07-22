@@ -15,7 +15,6 @@ azure_storage_blobs = "0.17"
 tracing = "0.1"
 tracing-subscriber = "0.3"
 thiserror = "1.0"
-redis = { workspace = true }
 tokio = { workspace = true }
 akd_watch_common = { workspace = true}
 akd = {workspace = true}

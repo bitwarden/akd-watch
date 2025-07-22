@@ -11,5 +11,5 @@ pub use audit_request::AuditRequest;
 pub use namespace_info::*;
 pub use versions::*;
 pub use error::AkdWatchError;
-pub use epoch_signature::{SignatureStorage, EpochSignature};
+pub use epoch_signature::EpochSignature;
 pub use configurations::BitwardenV1Configuration;

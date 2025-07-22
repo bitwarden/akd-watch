@@ -1,11 +1,9 @@
 use akd::local_auditing::AuditBlob;
 use anyhow::{Result, anyhow};
-use futures_util::stream::StreamExt;
 use tracing_subscriber;
 
 use akd_watch_common::{
-    AuditRequest, EpochSignature, SignatureStorage, configurations::verify_consecutive_append_only,
-    crypto::SigningKey, storage::InMemoryStorage,
+    configurations::verify_consecutive_append_only, crypto::SigningKey, storage::{AuditRequestQueue, InMemoryQueue, InMemoryStorage, SignatureStorage}, AuditRequest, EpochSignature
 };
 
 mod error;
@@ -14,34 +12,19 @@ mod error;
 async fn main() {
     tracing_subscriber::fmt::init();
 
-    // Initialize multiplexed Redis connection
-    let client = redis::Client::open("redis://127.0.0.1/").expect("Failed to create Redis client");
-    let mut conn = client
-        .get_async_pubsub()
-        .await
-        .expect("Failed to get Redis connection");
-
-    // Subscribe to audit requests channel
-    conn.subscribe(&["audit_requests"])
-        .await
-        .expect("Failed to subscribe to audit_requests channel");
 
     let storage = InMemoryStorage::new();
+    let mut queue = InMemoryQueue::new();
 
     // TODO: Replace with actual signing key retrieval
     let signing_key = SigningKey::generate();
 
     println!("Listening for audit requests.");
-    while let Some(msg) = conn.on_message().next().await {
+    while let Some(audit_request) = queue.dequeue().await {
         let storage = storage.clone();
         let secret_key = signing_key.clone();
         // spawn a thread to handle each audit request
         tokio::spawn(async move {
-            let Ok(audit_request) = AuditRequest::try_from(msg) else {
-                eprintln!("Failed to parse audit request from message");
-                return;
-            };
-
             // Process the audit request
             match process_audit_request(audit_request, storage.clone(), secret_key).await {
                 Ok(result) => {

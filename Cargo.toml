@@ -15,7 +15,6 @@ akd_watch_watcher = { path = "crates/watcher" }
 akd_watch_web = { path = "crates/web" }
 akd_watch_common = { path = "crates/common" }
 thiserror = "2.0.12"
-redis = { version = "0.32.4", features = ["aio", "tokio-comp"] }
 tokio = { version = "1.46.1", features = ["full"] }
 akd = { version = "0.11.0", features = ["whatsapp_v1", "public_auditing"] }
 akd_core = { version = "0.11.0" }

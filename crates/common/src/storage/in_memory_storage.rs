@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::{Arc, RwLock}};
 
-use crate::{epoch_signature::EpochSignature, SignatureStorage};
+use crate::{epoch_signature::EpochSignature, storage::SignatureStorage};
 
 #[derive(Clone)]
 pub struct InMemoryStorage {

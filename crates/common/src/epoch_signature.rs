@@ -6,15 +6,6 @@ use std::future::Future;
 
 use crate::{crypto::{SigningKey, VerifyingKey}, AkdWatchError, Ciphersuite, Epoch, NamespaceInfo};
 
-pub trait SignatureStorage {
-    fn get_signature(&self, epoch: &u64) -> impl Future<Output = Option<EpochSignature>> + Send;
-    fn set_signature(
-        &mut self,
-        epoch: u64,
-        signature: EpochSignature,
-    ) -> impl Future<Output = ()> + Send;
-}
-
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "audit_version")]
 pub enum EpochSignature {

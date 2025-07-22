@@ -8,6 +8,7 @@
   "words": [
     "Ciphersuite",
     "clippy",
+    "Deque",
     "repr",
     "serde"
   ],

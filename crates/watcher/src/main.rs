@@ -27,7 +27,6 @@ async fn main() {
         loop {
             // 1. Poll Azure Blob Storage for new blobs
             // 2. Add to work queue for auditor
-            // 3. Update redis cache with latest seen epoch for namespace
             // This is a placeholder for demonstration
             std::thread::sleep(std::time::Duration::from_secs(20));
         }

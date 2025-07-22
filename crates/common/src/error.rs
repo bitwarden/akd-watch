@@ -8,8 +8,6 @@ pub enum AkdWatchError {
     EpochParseError(#[from] std::num::ParseIntError),
     #[error("Local auditor error: {0:?}")]
     LocalAuditorError(akd::local_auditing::LocalAuditorError),
-    #[error("Redis error: {0}")]
-    RedisError(#[from] redis::RedisError),
     #[error("Serde JSON error: {0}")]
     SerdeJsonError(#[from] serde_json::Error),
     #[error("Failed to parse epoch root hash: {0:?}")]
