@@ -3,7 +3,7 @@ use anyhow::{Result, anyhow};
 use tracing_subscriber;
 
 use akd_watch_common::{
-    configurations::verify_consecutive_append_only, crypto::SigningKey, storage::{AuditRequestQueue, InMemoryQueue, InMemoryStorage, SignatureStorage}, AuditRequest, EpochSignature
+    configurations::verify_consecutive_append_only, crypto::SigningKey, storage::{whatsapp_akd_storage::WhatsAppAkdStorage, AkdStorage, AuditRequestQueue, InMemoryQueue, InMemoryStorage, SignatureStorage}, AuditRequest, EpochSignature
 };
 
 mod error;
@@ -15,6 +15,8 @@ async fn main() {
 
     let storage = InMemoryStorage::new();
     let mut queue = InMemoryQueue::new();
+    // TODO: replace with namepaced akd list
+    let akd = WhatsAppAkdStorage::new();
 
     // TODO: Replace with actual signing key retrieval
     let signing_key = SigningKey::generate();
@@ -23,10 +25,11 @@ async fn main() {
     while let Some(audit_request) = queue.dequeue().await {
         let storage = storage.clone();
         let secret_key = signing_key.clone();
+        let akd = akd.clone();
         // spawn a thread to handle each audit request
         tokio::spawn(async move {
             // Process the audit request
-            match process_audit_request(audit_request, storage.clone(), secret_key).await {
+            match process_audit_request(audit_request, storage, secret_key, akd).await {
                 Ok(result) => {
                     println!("Audit result: {:?}", result);
                     // TODO: Store the result
@@ -45,12 +48,13 @@ async fn process_audit_request(
     request: AuditRequest,
     mut storage: impl SignatureStorage,
     mut signing_key: SigningKey,
+    akd: impl AkdStorage,
 ) -> Result<()> {
     let blob_name = request.parse_blob_name()?;
 
     // download the blob
     // TODO: lookup namespace url
-    let audit_blob = get_proof("http://example.com/blobs", &request).await?;
+    let audit_blob = akd.get_proof(&blob_name).await?;
     // Note we ignore start_hash because we want to tie it to previously verified audits, so we
     // download the signature for the previous epoch
     let (end_epoch, _, end_hash, proof) =
@@ -88,13 +92,4 @@ async fn process_audit_request(
     storage.set_signature(blob_name.epoch, signature).await;
 
     Ok(())
-}
-
-pub(crate) async fn get_proof(url: &str, request: &AuditRequest) -> Result<AuditBlob> {
-    let name = request.parse_blob_name()?;
-    let url = format!("{}/{}", url, request.blob_name);
-    let resp = reqwest::get(url).await?.bytes().await?;
-    let data = resp.to_vec();
-
-    Ok(AuditBlob { data, name })
 }
