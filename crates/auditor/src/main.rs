@@ -51,15 +51,18 @@ async fn process_audit_request(
     // download the blob
     // TODO: lookup namespace url
     let audit_blob = get_proof("http://example.com/blobs", &request).await?;
-    // Note we ignore start_hash because we want to lock it to our previous signature
+    // Note we ignore start_hash because we want to tie it to previously verified audits, so we
+    // download the signature for the previous epoch
     let (end_epoch, _, end_hash, proof) =
         audit_blob.decode().map_err(|err| anyhow!("{:?}", err))?;
+    let previous_epoch = blob_name.epoch - 1;
 
     // get the previous signature
-    let Some(previous_signature) = storage.get_signature(&blob_name.epoch).await else {
+    let Some(previous_signature) = storage.get_signature(&previous_epoch).await else {
+        // TODO: Enqueue the previous epoch then this epoch.
         return Err(anyhow!(
-            "Unable to find signature for epoch {}",
-            blob_name.epoch
+            "Unable to find signature for previous epoch, {}.",
+            previous_epoch
         ));
     };
 
