@@ -2,13 +2,16 @@ mod in_memory_storage;
 mod in_memory_queue;
 pub mod whatsapp_akd_storage;
 
+use std::fmt::{Display, Debug};
+
 use akd::{local_auditing::{AuditBlob, AuditBlobName}};
 pub use in_memory_storage::InMemoryStorage;
 pub use in_memory_queue::InMemoryQueue;
 
 use crate::{AuditRequest, EpochSignature};
 
-pub trait SignatureStorage {
+pub trait SignatureStorage: Clone + Debug + Send + Sync {
+    fn has_signature(&self, epoch: &u64) -> impl Future<Output = bool> + Send;
     fn get_signature(&self, epoch: &u64) -> impl Future<Output = Option<EpochSignature>> + Send;
     fn set_signature(
         &mut self,

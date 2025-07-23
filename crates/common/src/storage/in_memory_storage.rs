@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::{Arc, RwLock}};
 
 use crate::{epoch_signature::EpochSignature, storage::SignatureStorage};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct InMemoryStorage {
     signatures: Arc<RwLock<HashMap<u64, EpochSignature>>>,
 }

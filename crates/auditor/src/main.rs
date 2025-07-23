@@ -28,15 +28,14 @@ async fn main() {
         // spawn a thread to handle each audit request
         tokio::spawn(async move {
             // Process the audit request
-            match process_audit_request(audit_request, storage, secret_key, akd).await {
-                Ok(result) => {
-                    println!("Audit result: {:?}", result);
-                }
+            match process_audit_request(audit_request.clone(), storage, secret_key, akd).await {
+                Ok(_) => {
+                    println!("Processed audit request successfully for request {:?}", audit_request);
+                },
                 Err(e) => {
                     eprintln!("Error processing audit request: {:?}", e);
                 }
             };
-            return;
         });
     }
     println!("Stopped listening for audit requests.");
@@ -50,6 +49,11 @@ async fn process_audit_request(
 ) -> Result<()> {
     let blob_name = request.parse_blob_name()?;
 
+    // if we've signed this epoch, skip it
+    if storage.get_signature(&blob_name.epoch).await.is_some() {
+        return Ok(());
+    }
+
     // download the blob
     // TODO: lookup namespace url
     let audit_blob = akd.get_proof(&blob_name).await?;
@@ -60,10 +64,17 @@ async fn process_audit_request(
     let previous_epoch = blob_name.epoch - 1;
 
     // get the previous signature
-    let Some(previous_signature) = storage.get_signature(&previous_epoch).await else {
-        // TODO: Enqueue the previous epoch then this epoch.
+    let missing_epochs = missing_previous_signatures(storage.clone(), previous_epoch).await?;
+    if !missing_epochs.is_empty() {
+        // TODO: Enqueue the missing epochs. This will heal signature storage for this range
         return Err(anyhow!(
-            "Unable to find signature for previous epoch, {}.",
+            "Missing previous signatures for epochs: {:?}",
+            missing_epochs
+        ));
+    }
+    let Some(previous_signature) = storage.get_signature(&previous_epoch).await else {
+        return Err(anyhow!(
+            "Unable to find signature for previous epoch: {}",
             previous_epoch
         ));
     };
@@ -90,4 +101,23 @@ async fn process_audit_request(
     storage.set_signature(blob_name.epoch, signature).await;
 
     Ok(())
+}
+
+async fn missing_previous_signatures(
+    storage: impl SignatureStorage,
+    mut epoch: u64,
+) -> Result<Vec<u64>> {
+    let mut missing_epochs = Vec::new();
+    loop {
+        if epoch == 0 {
+            break;
+        }
+        if storage.has_signature(&epoch).await {
+            break;
+        }
+        missing_epochs.push(epoch);
+        epoch -= 1;
+    }
+    missing_epochs.reverse();
+    Ok(missing_epochs)
 }
