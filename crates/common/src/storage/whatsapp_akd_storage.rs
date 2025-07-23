@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use akd::{local_auditing::{AuditBlob, AuditBlobName}};
 
 use crate::storage::{AkdStorage, AkdStorageError};
@@ -9,6 +11,12 @@ pub struct WhatsAppAkdStorage {
 impl WhatsAppAkdStorage {
     pub fn new() -> Self {
         WhatsAppAkdStorage {}
+    }
+}
+
+impl Display for WhatsAppAkdStorage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "WhatsApp AKD")
     }
 }
 

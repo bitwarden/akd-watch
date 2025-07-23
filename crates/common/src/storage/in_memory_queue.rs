@@ -2,7 +2,7 @@ use std::{ collections::VecDeque, sync::{Arc, RwLock}};
 
 use crate::{ storage::AuditRequestQueue, AuditRequest};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct InMemoryQueue {
     queue: Arc<RwLock<VecDeque<AuditRequest>>>,
 }

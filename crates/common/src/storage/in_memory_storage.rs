@@ -16,11 +16,19 @@ impl InMemoryStorage {
 }
 
 impl SignatureStorage for InMemoryStorage {
+    async fn has_signature(&self, epoch: &u64) -> bool {
+        let signatures = self.signatures.read().unwrap();
+        signatures.contains_key(epoch)
+    }
     async fn get_signature(&self, epoch: &u64) -> Option<EpochSignature> {
         self.signatures.read().unwrap().get(epoch).cloned()
     }
 
     async fn set_signature(&mut self, epoch: u64, signature: EpochSignature) {
         self.signatures.write().unwrap().insert(epoch, signature);
+    }
+
+    async fn latest_signed_epoch(&self) -> Option<u64> {
+        self.signatures.read().unwrap().keys().cloned().max()
     }
 }

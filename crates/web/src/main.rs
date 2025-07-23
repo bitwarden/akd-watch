@@ -1,19 +1,10 @@
 use std::net::SocketAddr;
 use axum::Router;
-use serde::{Deserialize, Serialize};
 use tokio::net::TcpListener;
 use tracing_subscriber;
 
 mod routes;
 mod error;
-
-// Placeholder for audit result type
-#[derive(Clone, Serialize, Deserialize)]
-struct AuditResult {
-    blob_name: String,
-    verified: bool,
-    signature: String,
-}
 
 #[tokio::main]
 async fn main() {

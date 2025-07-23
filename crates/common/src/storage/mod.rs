@@ -18,16 +18,17 @@ pub trait SignatureStorage: Clone + Debug + Send + Sync {
         epoch: u64,
         signature: EpochSignature,
     ) -> impl Future<Output = ()> + Send;
+    fn latest_signed_epoch(&self) -> impl Future<Output = Option<u64>> + Send;
 }
 
-pub trait AuditRequestQueue {
+pub trait AuditRequestQueue: Clone + Debug + Send + Sync {
     fn enqueue(&mut self, request: AuditRequest) -> impl Future<Output = ()> + Send;
     fn enqueue_n(&mut self, requests: Vec<AuditRequest>) -> impl Future<Output = ()> + Send;
     fn dequeue(&mut self) -> impl Future<Output = Option<AuditRequest>> + Send;
     fn dequeue_n(&mut self, n: usize) -> impl Future<Output = Vec<AuditRequest>> + Send;
 }
 
-pub trait AkdStorage {
+pub trait AkdStorage: Clone + Display + Debug + Send + Sync {
     fn has_proof(&self, epoch: u64) -> impl Future<Output = bool> + Send;
     fn get_proof(&self, name: &AuditBlobName) -> impl Future<Output = Result<AuditBlob, AkdStorageError>> + Send;
 }
