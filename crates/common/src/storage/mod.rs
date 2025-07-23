@@ -18,7 +18,7 @@ pub trait SignatureStorage: Clone + Debug + Send + Sync {
         epoch: u64,
         signature: EpochSignature,
     ) -> impl Future<Output = ()> + Send;
-    fn latest_signed_epoch(&self) -> impl Future<Output = Option<u64>> + Send;
+    fn latest_signed_epoch(&self) -> impl Future<Output = u64> + Send;
 }
 
 pub trait AuditRequestQueue: Clone + Debug + Send + Sync {
@@ -30,6 +30,7 @@ pub trait AuditRequestQueue: Clone + Debug + Send + Sync {
 
 pub trait AkdStorage: Clone + Display + Debug + Send + Sync {
     fn has_proof(&self, epoch: u64) -> impl Future<Output = bool> + Send;
+    fn get_proof_name(&self, epoch: u64) -> impl Future<Output = Result<AuditBlobName, AkdStorageError>> + Send;
     fn get_proof(&self, name: &AuditBlobName) -> impl Future<Output = Result<AuditBlob, AkdStorageError>> + Send;
 }
 
@@ -38,4 +39,6 @@ pub trait AkdStorage: Clone + Display + Debug + Send + Sync {
 pub enum AkdStorageError {
     #[error("AKD error: {0}")]
     ReqwestError(#[from] reqwest::Error),
+    #[error("Custom error: {0}")]
+    Custom(String),
 }

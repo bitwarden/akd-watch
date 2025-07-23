@@ -28,7 +28,11 @@ impl SignatureStorage for InMemoryStorage {
         self.signatures.write().unwrap().insert(epoch, signature);
     }
 
-    async fn latest_signed_epoch(&self) -> Option<u64> {
-        self.signatures.read().unwrap().keys().cloned().max()
+    async fn latest_signed_epoch(&self) -> u64 {
+        self.signatures.read().expect("poisoned signatures lock")
+            .keys()
+            .cloned()
+            .max()
+            .unwrap_or(0)
     }
 }

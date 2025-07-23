@@ -12,6 +12,12 @@ pub struct AuditRequest {
 
 
 impl AuditRequest {
+    pub fn new(info: NamespaceInfo, blob_name: String) -> Self {
+        AuditRequest {
+            namespace: info,
+            blob_name,
+        }
+    }
     pub fn parse_blob_name(&self) -> Result<AuditBlobName, AkdWatchError> {
         Ok(AuditBlobName::try_from(self.blob_name.as_str())?)
     }
