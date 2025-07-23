@@ -1,4 +1,4 @@
-use tracing::{trace, trace_span};
+use tracing::{instrument, trace};
 use tracing_subscriber;
 
 use akd_watch_common::{configurations::AkdConfiguration, storage::{whatsapp_akd_storage::WhatsAppAkdStorage, AkdStorage, AuditRequestQueue, InMemoryQueue, InMemoryStorage, SignatureStorage}, AuditRequest, AuditVersion, NamespaceInfo, NamespaceStatus};
@@ -52,13 +52,11 @@ async fn main() {
     }
 }
 
+#[instrument(level = "trace", skip_all, fields(namespace = namespace.info.name))]
 async fn poll_for_new_epoch<A: AkdStorage, S: SignatureStorage, Q: AuditRequestQueue>(namespace: Namespace<A, S>, mut queue: Q) -> Result<(), WatcherError> {
     let akd = namespace.akd_storage;
     let signatures = namespace.signature_storage;
     let latest_epoch = signatures.latest_signed_epoch().await;
-
-    let span = trace_span!("poll_for_new_epoch", namespace = namespace.info.name, epoch = latest_epoch);
-    let _guard = span.enter();
 
     // get the latest signed epoch
     let mut latest_epoch = latest_epoch;
