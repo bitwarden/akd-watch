@@ -3,14 +3,14 @@
   "description" : "Description",
   "documentation" : { },
   "id" : 1,
-  "lastModifiedDate" : "2025-07-22T15:12:05Z",
+  "lastModifiedDate" : "2025-07-24T19:13:14Z",
   "model" : {
     "properties" : {
       "structurizr.groupSeparator" : "/"
     },
     "softwareSystems" : [ {
       "containers" : [ {
-        "description" : "The component that audits the AKD",
+        "description" : "The component that polls the AKD for new proofs, verifies the, and signs verified proofs",
         "documentation" : { },
         "id" : "2",
         "name" : "Auditor",
@@ -18,109 +18,57 @@
           "structurizr.dsl.identifier" : "akd_watch.auditor"
         },
         "relationships" : [ {
-          "description" : "Downloads and audits epoch proofs",
-          "destinationId" : "9",
-          "id" : "17",
+          "description" : "Poll for and downloads audit proofs",
+          "destinationId" : "7",
+          "id" : "15",
           "sourceId" : "2",
           "tags" : "Relationship",
           "technology" : "http"
         }, {
           "description" : "Writes updates to AKD namespace state",
-          "destinationId" : "6",
-          "id" : "20",
+          "destinationId" : "4",
+          "id" : "18",
           "sourceId" : "2",
           "tags" : "Relationship,write"
         }, {
           "description" : "Stores audit signatures",
-          "destinationId" : "10",
-          "id" : "21",
+          "destinationId" : "8",
+          "id" : "19",
           "sourceId" : "2",
           "tags" : "Relationship"
         } ],
         "tags" : "Element,Container",
-        "technology" : "Rust"
-      }, {
-        "description" : "The component that watches the AKD for new published audit proofs",
-        "documentation" : { },
-        "id" : "3",
-        "name" : "Watcher",
-        "properties" : {
-          "structurizr.dsl.identifier" : "akd_watch.watcher"
-        },
-        "relationships" : [ {
-          "description" : "Poll for audit proofs",
-          "destinationId" : "9",
-          "id" : "15",
-          "sourceId" : "3",
-          "tags" : "Relationship",
-          "technology" : "http"
-        }, {
-          "description" : "Enqueue new audit proofs to be audited",
-          "destinationId" : "5",
-          "id" : "24",
-          "sourceId" : "3",
-          "tags" : "Relationship"
-        } ],
-        "tags" : "Element,Container",
-        "technology" : "Rust"
+        "technology" : "Rust and reqwest"
       }, {
         "description" : "The web interface for AKD Watch",
         "documentation" : { },
-        "id" : "4",
+        "id" : "3",
         "name" : "Web",
         "properties" : {
           "structurizr.dsl.identifier" : "akd_watch.web"
         },
         "relationships" : [ {
           "description" : "reads audit signatures",
-          "destinationId" : "10",
-          "id" : "23",
-          "sourceId" : "4",
-          "tags" : "Relationship"
-        }, {
-          "description" : "Enqueue missing audit signatures",
-          "destinationId" : "5",
-          "id" : "26",
-          "sourceId" : "4",
+          "destinationId" : "8",
+          "id" : "21",
+          "sourceId" : "3",
           "tags" : "Relationship"
         } ],
         "tags" : "Element,Container",
         "technology" : "Rust with Axum"
       }, {
-        "description" : "fault-tolerant queue to store audit requests",
-        "documentation" : { },
-        "id" : "5",
-        "name" : "Audit Request Queue",
-        "properties" : {
-          "structurizr.dsl.identifier" : "akd_watch.audit_queue"
-        },
-        "relationships" : [ {
-          "description" : "Dequeue audit proofs to be audited",
-          "destinationId" : "2",
-          "id" : "25",
-          "sourceId" : "5",
-          "tags" : "Relationship"
-        } ],
-        "tags" : "Element,Container,Queue"
-      }, {
         "description" : "Stores AKD epoch and configuration information",
         "documentation" : { },
-        "id" : "6",
+        "id" : "4",
         "name" : "Database",
         "properties" : {
           "structurizr.dsl.identifier" : "akd_watch.database"
         },
         "relationships" : [ {
           "description" : "Reads AKD namespace state",
-          "destinationId" : "4",
-          "id" : "18",
-          "sourceId" : "6",
-          "tags" : "Relationship,readonly"
-        }, {
-          "description" : "Reads AKD namespace state",
           "destinationId" : "3",
-          "id" : "19",
-          "sourceId" : "6",
+          "id" : "17",
+          "sourceId" : "4",
           "tags" : "Relationship,readonly"
         } ],
         "tags" : "Element,Container,Database",
@@ -128,11 +76,26 @@
       }, {
         "description" : "Connection stings, keys, AKD namespaces and other configuration information",
         "documentation" : { },
-        "id" : "7",
+        "id" : "5",
         "name" : "Configuration",
         "properties" : {
           "structurizr.dsl.identifier" : "akd_watch.config"
         },
+        "relationships" : [ {
+          "description" : "Reads configuration",
+          "destinationId" : "3",
+          "id" : "9",
+          "sourceId" : "5",
+          "tags" : "Relationship,environment",
+          "technology" : "environment"
+        }, {
+          "description" : "Reads configuration",
+          "destinationId" : "2",
+          "id" : "10",
+          "sourceId" : "5",
+          "tags" : "Relationship,environment",
+          "technology" : "environment"
+        } ],
         "tags" : "Element,Container,Config",
         "technology" : "JSON"
       } ],
@@ -145,24 +108,24 @@
         "structurizr.dsl.identifier" : "akd_watch"
       },
       "relationships" : [ {
-        "description" : "Poll for audit proofs",
-        "destinationId" : "9",
+        "description" : "Poll for and downloads audit proofs",
+        "destinationId" : "7",
         "id" : "16",
         "linkedRelationshipId" : "15",
         "sourceId" : "1",
         "technology" : "http"
       }, {
         "description" : "Stores audit signatures",
-        "destinationId" : "10",
-        "id" : "22",
-        "linkedRelationshipId" : "21",
+        "destinationId" : "8",
+        "id" : "20",
+        "linkedRelationshipId" : "19",
         "sourceId" : "1"
       } ],
       "tags" : "Element,Software System"
     }, {
       "description" : "The client that depends on the AKD Watch to audit an AKD",
       "documentation" : { },
-      "id" : "8",
+      "id" : "6",
       "location" : "Unspecified",
       "name" : "Client",
       "properties" : {
@@ -170,9 +133,9 @@
       },
       "relationships" : [ {
         "description" : "Requests and validates audit signatures for required epochs",
-        "destinationId" : "4",
+        "destinationId" : "3",
         "id" : "11",
-        "sourceId" : "8",
+        "sourceId" : "6",
         "tags" : "Relationship",
         "technology" : "http"
       }, {
@@ -180,20 +143,20 @@
         "destinationId" : "1",
         "id" : "12",
         "linkedRelationshipId" : "11",
-        "sourceId" : "8",
+        "sourceId" : "6",
         "technology" : "http"
       }, {
         "description" : "Requests and validates lookup and history proofs",
-        "destinationId" : "9",
+        "destinationId" : "7",
         "id" : "13",
-        "sourceId" : "8",
+        "sourceId" : "6",
         "tags" : "Relationship",
         "technology" : "http"
       }, {
         "description" : "Requests and validates audit signatures",
-        "destinationId" : "10",
+        "destinationId" : "8",
         "id" : "14",
-        "sourceId" : "8",
+        "sourceId" : "6",
         "tags" : "Relationship",
         "technology" : "http"
       } ],
@@ -201,7 +164,7 @@
     }, {
       "description" : "The AKD that is being audited",
       "documentation" : { },
-      "id" : "9",
+      "id" : "7",
       "location" : "Unspecified",
       "name" : "AKD",
       "properties" : {
@@ -211,7 +174,7 @@
     }, {
       "description" : "Stores signatures of audit proofs, publicly accessible",
       "documentation" : { },
-      "id" : "10",
+      "id" : "8",
       "location" : "Unspecified",
       "name" : "Signature Storage",
       "properties" : {
@@ -222,12 +185,12 @@
   },
   "name" : "AKD Watch System",
   "properties" : {
-    "structurizr.dsl" : "d29ya3NwYWNlICJBS0QgV2F0Y2ggU3lzdGVtIiB7CgogICFpZGVudGlmaWVycyBoaWVyYXJjaGljYWwKCiAgbW9kZWwgewogICAgcHJvcGVydGllcyB7CiAgICAgICJzdHJ1Y3R1cml6ci5ncm91cFNlcGFyYXRvciIgIi8iCiAgICB9CgogICAgYWtkX3dhdGNoID0gc29mdHdhcmVTeXN0ZW0gIkFLRCBXYXRjaCIgewogICAgICBkZXNjcmlwdGlvbiAiVGhlIEFLRCBXYXRjaCBzeXN0ZW0gdGhhdCBhdWRpdHMgdGhlIEFLRCIKCiAgICAgIGF1ZGl0b3IgPSBjb250YWluZXIgIkF1ZGl0b3IiIHsKICAgICAgICBkZXNjcmlwdGlvbiAiVGhlIGNvbXBvbmVudCB0aGF0IGF1ZGl0cyB0aGUgQUtEIgogICAgICAgIHRlY2hub2xvZ3kgIlJ1c3QiCiAgICAgIH0KCiAgICAgIHdhdGNoZXIgPSBjb250YWluZXIgIldhdGNoZXIiIHsKICAgICAgICBkZXNjcmlwdGlvbiAiVGhlIGNvbXBvbmVudCB0aGF0IHdhdGNoZXMgdGhlIEFLRCBmb3IgbmV3IHB1Ymxpc2hlZCBhdWRpdCBwcm9vZnMiCiAgICAgICAgdGVjaG5vbG9neSAiUnVzdCIKICAgICAgfQoKICAgICAgd2ViID0gY29udGFpbmVyICJXZWIiIHsKICAgICAgICBkZXNjcmlwdGlvbiAiVGhlIHdlYiBpbnRlcmZhY2UgZm9yIEFLRCBXYXRjaCIKICAgICAgICB0ZWNobm9sb2d5ICJSdXN0IHdpdGggQXh1bSIKICAgICAgfQoKICAgICAgYXVkaXRfcXVldWUgPSBjb250YWluZXIgIkF1ZGl0IFJlcXVlc3QgUXVldWUiIHsKICAgICAgICBkZXNjcmlwdGlvbiAiZmF1bHQtdG9sZXJhbnQgcXVldWUgdG8gc3RvcmUgYXVkaXQgcmVxdWVzdHMiCiAgICAgICAgdGFncyAiUXVldWUiCiAgICAgICAgLy8gdGVjaG5vbG9neSAiQXp1cmUgUXVldWUgb3IgcmVsYXRpb25hbCBkYXRhYmFzZS1tZWRpYXRlZCBxdWV1ZSIKICAgICAgfQoKICAgICAgZGF0YWJhc2UgPSBjb250YWluZXIgIkRhdGFiYXNlIiB7CiAgICAgICAgZGVzY3JpcHRpb24gIlN0b3JlcyBBS0QgZXBvY2ggYW5kIGNvbmZpZ3VyYXRpb24gaW5mb3JtYXRpb24iCiAgICAgICAgdGVjaG5vbG9neSAiUG9zdGdyZVNRTCIKICAgICAgICB0YWdzICJEYXRhYmFzZSIKICAgICAgfQoKICAgICAgY29uZmlnID0gY29udGFpbmVyICJDb25maWd1cmF0aW9uIiB7CiAgICAgICAgZGVzY3JpcHRpb24gIkNvbm5lY3Rpb24gc3RpbmdzLCBrZXlzLCBBS0QgbmFtZXNwYWNlcyBhbmQgb3RoZXIgY29uZmlndXJhdGlvbiBpbmZvcm1hdGlvbiIKICAgICAgICB0ZWNobm9sb2d5ICJKU09OIgogICAgICAgIHRhZ3MgIkNvbmZpZyIKICAgICAgfQogICAgfQoKICAgIGNsaWVudCA9IHNvZnR3YXJlU3lzdGVtICJDbGllbnQiIHsKICAgICAgZGVzY3JpcHRpb24gIlRoZSBjbGllbnQgdGhhdCBkZXBlbmRzIG9uIHRoZSBBS0QgV2F0Y2ggdG8gYXVkaXQgYW4gQUtEIgogICAgICB0YWdzICJDbGllbnQiCiAgICB9CgogICAgYWtkID0gc29mdHdhcmVTeXN0ZW0gIkFLRCIgewogICAgICB0YWdzICJFeHRlcm5hbCIKICAgICAgZGVzY3JpcHRpb24gIlRoZSBBS0QgdGhhdCBpcyBiZWluZyBhdWRpdGVkIgogICAgfQoKICAgIHNpZ25hdHVyZV9zdG9yYWdlID0gc29mdHdhcmVTeXN0ZW0gIlNpZ25hdHVyZSBTdG9yYWdlIiB7CiAgICAgIGRlc2NyaXB0aW9uICJTdG9yZXMgc2lnbmF0dXJlcyBvZiBhdWRpdCBwcm9vZnMsIHB1YmxpY2x5IGFjY2Vzc2libGUiCiAgICAgIHRhZ3MgIkJsb2IgU3RvcmFnZSIKICAgIH0KCgogICAgY2xpZW50IC0+IGFrZF93YXRjaC53ZWIgIlJlcXVlc3RzIGFuZCB2YWxpZGF0ZXMgYXVkaXQgc2lnbmF0dXJlcyBmb3IgcmVxdWlyZWQgZXBvY2hzIiAiaHR0cCIKICAgIGNsaWVudCAtPiBha2QgIlJlcXVlc3RzIGFuZCB2YWxpZGF0ZXMgbG9va3VwIGFuZCBoaXN0b3J5IHByb29mcyIgImh0dHAiCiAgICBjbGllbnQgLT4gc2lnbmF0dXJlX3N0b3JhZ2UgIlJlcXVlc3RzIGFuZCB2YWxpZGF0ZXMgYXVkaXQgc2lnbmF0dXJlcyIgImh0dHAiCgogICAgYWtkX3dhdGNoLndhdGNoZXIgLT4gYWtkICJQb2xsIGZvciBhdWRpdCBwcm9vZnMiICJodHRwIgogICAgYWtkX3dhdGNoLmF1ZGl0b3IgLT4gYWtkICJEb3dubG9hZHMgYW5kIGF1ZGl0cyBlcG9jaCBwcm9vZnMiICJodHRwIgoKICAgIC8vIGFrZF93YXRjaC5jb25maWcgLT4gYWtkX3dhdGNoLndlYiAiUmVhZHMgY29uZmlndXJhdGlvbiIgImVudmlyb25tZW50IiAiZW52aXJvbm1lbnQiCiAgICAvLyBha2Rfd2F0Y2guY29uZmlnIC0+IGFrZF93YXRjaC5hdWRpdG9yICJSZWFkcyBjb25maWd1cmF0aW9uIiAiZW52aXJvbm1lbnQiICJlbnZpcm9ubWVudCIKICAgIC8vIGFrZF93YXRjaC5jb25maWcgLT4gYWtkX3dhdGNoLndhdGNoZXIgIlJlYWRzIGNvbmZpZ3VyYXRpb24iICJlbnZpcm9ubWVudCIgImVudmlyb25tZW50IgoKICAgIGFrZF93YXRjaC5kYXRhYmFzZSAtPiBha2Rfd2F0Y2gud2ViICJSZWFkcyBBS0QgbmFtZXNwYWNlIHN0YXRlIiB7CiAgICAgIHRhZ3MgInJlYWRvbmx5IgogICAgfQogICAgYWtkX3dhdGNoLmRhdGFiYXNlIC0+IGFrZF93YXRjaC53YXRjaGVyICJSZWFkcyBBS0QgbmFtZXNwYWNlIHN0YXRlIiB7CiAgICAgIHRhZ3MgInJlYWRvbmx5IgogICAgfQogICAgYWtkX3dhdGNoLmF1ZGl0b3IgLT4gYWtkX3dhdGNoLmRhdGFiYXNlICJXcml0ZXMgdXBkYXRlcyB0byBBS0QgbmFtZXNwYWNlIHN0YXRlIiB7CiAgICAgIHRhZ3MgIndyaXRlIgogICAgfQoKICAgIGFrZF93YXRjaC5hdWRpdG9yIC0+IHNpZ25hdHVyZV9zdG9yYWdlICJTdG9yZXMgYXVkaXQgc2lnbmF0dXJlcyIKICAgIGFrZF93YXRjaC53ZWIgLT4gc2lnbmF0dXJlX3N0b3JhZ2UgInJlYWRzIGF1ZGl0IHNpZ25hdHVyZXMiCgogICAgYWtkX3dhdGNoLndhdGNoZXIgLT4gYWtkX3dhdGNoLmF1ZGl0X3F1ZXVlICJFbnF1ZXVlIG5ldyBhdWRpdCBwcm9vZnMgdG8gYmUgYXVkaXRlZCIKICAgIGFrZF93YXRjaC5hdWRpdF9xdWV1ZSAtPiBha2Rfd2F0Y2guYXVkaXRvciAiRGVxdWV1ZSBhdWRpdCBwcm9vZnMgdG8gYmUgYXVkaXRlZCIKCiAgICBha2Rfd2F0Y2gud2ViIC0+IGFrZF93YXRjaC5hdWRpdF9xdWV1ZSAiRW5xdWV1ZSBtaXNzaW5nIGF1ZGl0IHNpZ25hdHVyZXMiCiAgfQoKICB2aWV3cyB7CiAgICBzeXN0ZW1MYW5kc2NhcGUgImFrZF93YXRjaCIgewogICAgICBpbmNsdWRlICoKICAgIH0KCiAgICBjb250YWluZXIgYWtkX3dhdGNoICJha2Rfd2F0Y2hfc2VydmVyIiB7CiAgICAgIGluY2x1ZGUgKgogICAgfQoKICAgIGNvbnRhaW5lciBha2Rfd2F0Y2ggImFrZF93YXRjaF93ZWIiIHsKICAgICAgaW5jbHVkZSAqCiAgICAgIGV4Y2x1ZGUgYWtkX3dhdGNoLmF1ZGl0b3IKICAgICAgZXhjbHVkZSBha2Rfd2F0Y2gud2F0Y2hlcgogICAgfQoKICAgIGNvbnRhaW5lciBha2Rfd2F0Y2ggImFrZF93YXRjaF9hdWRpdG9yIiB7CiAgICAgIGluY2x1ZGUgKgogICAgICBleGNsdWRlIGFrZF93YXRjaC53ZWIKICAgICAgZXhjbHVkZSBha2Rfd2F0Y2gud2F0Y2hlcgogICAgfQoKICAgIGNvbnRhaW5lciBha2Rfd2F0Y2ggImFrZF93YXRjaF93YXRjaGVyIiB7CiAgICAgIGluY2x1ZGUgKgogICAgICBleGNsdWRlIGFrZF93YXRjaC53ZWIKICAgICAgZXhjbHVkZSBha2Rfd2F0Y2guYXVkaXRvcgogICAgfQoKICAgIHN0eWxlcyB7CiAgICAgIHRoZW1lIGRlZmF1bHQKICAgICAgZWxlbWVudCAiRWxlbWVudCIgewogICAgICAgIGNvbG9yICMzYzNiM2IKICAgICAgfQogICAgICBlbGVtZW50ICJQZXJzb24iIHsKICAgICAgICBiYWNrZ3JvdW5kICNkMzQ0MDcKICAgICAgICBzaGFwZSBwZXJzb24KICAgICAgfQogICAgICBlbGVtZW50ICJRdWV1ZSIgewogICAgICAgIHNoYXBlIHBpcGUKICAgICAgfQogICAgICBlbGVtZW50ICJDbGllbnQiIHsKICAgICAgICBzaGFwZSBtb2JpbGVEZXZpY2VQb3J0cmFpdAogICAgICB9CiAgICAgIGVsZW1lbnQgIldlYiIgewogICAgICAgIHNoYXBlIHdlYkJyb3dzZXIKICAgICAgfQogICAgICBlbGVtZW50ICJEYXRhYmFzZSIgewogICAgICAgIHNoYXBlIGN5bGluZGVyCiAgICAgIH0KICAgICAgZWxlbWVudCAiQmxvYiBTdG9yYWdlIiB7CiAgICAgICAgc2hhcGUgY3lsaW5kZXIKICAgICAgICBiYWNrZ3JvdW5kICMwOGFjOWMKICAgICAgfQogICAgICBlbGVtZW50ICJDb25maWciIHsKICAgICAgICBzaGFwZSBmb2xkZXIKICAgICAgICBiYWNrZ3JvdW5kICM2ODU5NTkKICAgICAgfQogICAgICAvLyBJbmRpY2F0ZXMgYSBzb2Z0d2FyZSBzeXN0ZW0gdGhhdCBpcyBleHRlcm5hbCB0byB0aGUgQUtEIFdhdGNoIHN5c3RlbQogICAgICBlbGVtZW50ICJFeHRlcm5hbCIgewogICAgICAgIGNvbG9yICMwMDAwMDAKICAgICAgICBiYWNrZ3JvdW5kICNiNWI1YjUKICAgICAgfQoKICAgICAgcmVsYXRpb25zaGlwICJlbnZpcm9ubWVudCIgewogICAgICAgIHN0eWxlIHNvbGlkCiAgICAgIH0KCiAgICAgIHJlbGF0aW9uc2hpcCAicmVhZG9ubHkiIHsKICAgICAgICBjb2xvciBibHVlCiAgICAgIH0KCiAgICAgIHJlbGF0aW9uc2hpcCAid3JpdGUiIHsKICAgICAgICBjb2xvciByZWQKICAgICAgfQoKICAgIH0KICB9Cn0="
+    "structurizr.dsl" : "d29ya3NwYWNlICJBS0QgV2F0Y2ggU3lzdGVtIiB7CgogICFpZGVudGlmaWVycyBoaWVyYXJjaGljYWwKCiAgbW9kZWwgewogICAgcHJvcGVydGllcyB7CiAgICAgICJzdHJ1Y3R1cml6ci5ncm91cFNlcGFyYXRvciIgIi8iCiAgICB9CgogICAgYWtkX3dhdGNoID0gc29mdHdhcmVTeXN0ZW0gIkFLRCBXYXRjaCIgewogICAgICBkZXNjcmlwdGlvbiAiVGhlIEFLRCBXYXRjaCBzeXN0ZW0gdGhhdCBhdWRpdHMgdGhlIEFLRCIKCiAgICAgIGF1ZGl0b3IgPSBjb250YWluZXIgIkF1ZGl0b3IiIHsKICAgICAgICBkZXNjcmlwdGlvbiAiVGhlIGNvbXBvbmVudCB0aGF0IHBvbGxzIHRoZSBBS0QgZm9yIG5ldyBwcm9vZnMsIHZlcmlmaWVzIHRoZSwgYW5kIHNpZ25zIHZlcmlmaWVkIHByb29mcyIKICAgICAgICB0ZWNobm9sb2d5ICJSdXN0IGFuZCByZXF3ZXN0IgogICAgICB9CgogICAgICB3ZWIgPSBjb250YWluZXIgIldlYiIgewogICAgICAgIGRlc2NyaXB0aW9uICJUaGUgd2ViIGludGVyZmFjZSBmb3IgQUtEIFdhdGNoIgogICAgICAgIHRlY2hub2xvZ3kgIlJ1c3Qgd2l0aCBBeHVtIgogICAgICB9CgogICAgICBkYXRhYmFzZSA9IGNvbnRhaW5lciAiRGF0YWJhc2UiIHsKICAgICAgICBkZXNjcmlwdGlvbiAiU3RvcmVzIEFLRCBlcG9jaCBhbmQgY29uZmlndXJhdGlvbiBpbmZvcm1hdGlvbiIKICAgICAgICB0ZWNobm9sb2d5ICJQb3N0Z3JlU1FMIgogICAgICAgIHRhZ3MgIkRhdGFiYXNlIgogICAgICB9CgogICAgICBjb25maWcgPSBjb250YWluZXIgIkNvbmZpZ3VyYXRpb24iIHsKICAgICAgICBkZXNjcmlwdGlvbiAiQ29ubmVjdGlvbiBzdGluZ3MsIGtleXMsIEFLRCBuYW1lc3BhY2VzIGFuZCBvdGhlciBjb25maWd1cmF0aW9uIGluZm9ybWF0aW9uIgogICAgICAgIHRlY2hub2xvZ3kgIkpTT04iCiAgICAgICAgdGFncyAiQ29uZmlnIgogICAgICB9CiAgICB9CgogICAgY2xpZW50ID0gc29mdHdhcmVTeXN0ZW0gIkNsaWVudCIgewogICAgICBkZXNjcmlwdGlvbiAiVGhlIGNsaWVudCB0aGF0IGRlcGVuZHMgb24gdGhlIEFLRCBXYXRjaCB0byBhdWRpdCBhbiBBS0QiCiAgICAgIHRhZ3MgIkNsaWVudCIKICAgIH0KCiAgICBha2QgPSBzb2Z0d2FyZVN5c3RlbSAiQUtEIiB7CiAgICAgIHRhZ3MgIkV4dGVybmFsIgogICAgICBkZXNjcmlwdGlvbiAiVGhlIEFLRCB0aGF0IGlzIGJlaW5nIGF1ZGl0ZWQiCiAgICB9CgogICAgc2lnbmF0dXJlX3N0b3JhZ2UgPSBzb2Z0d2FyZVN5c3RlbSAiU2lnbmF0dXJlIFN0b3JhZ2UiIHsKICAgICAgZGVzY3JpcHRpb24gIlN0b3JlcyBzaWduYXR1cmVzIG9mIGF1ZGl0IHByb29mcywgcHVibGljbHkgYWNjZXNzaWJsZSIKICAgICAgdGFncyAiQmxvYiBTdG9yYWdlIgogICAgfQoKICAgIGFrZF93YXRjaC5jb25maWcgLT4gYWtkX3dhdGNoLndlYiAiUmVhZHMgY29uZmlndXJhdGlvbiIgImVudmlyb25tZW50IiAiZW52aXJvbm1lbnQiCiAgICBha2Rfd2F0Y2guY29uZmlnIC0+IGFrZF93YXRjaC5hdWRpdG9yICJSZWFkcyBjb25maWd1cmF0aW9uIiAiZW52aXJvbm1lbnQiICJlbnZpcm9ubWVudCIKCiAgICBjbGllbnQgLT4gYWtkX3dhdGNoLndlYiAiUmVxdWVzdHMgYW5kIHZhbGlkYXRlcyBhdWRpdCBzaWduYXR1cmVzIGZvciByZXF1aXJlZCBlcG9jaHMiICJodHRwIgogICAgY2xpZW50IC0+IGFrZCAiUmVxdWVzdHMgYW5kIHZhbGlkYXRlcyBsb29rdXAgYW5kIGhpc3RvcnkgcHJvb2ZzIiAiaHR0cCIKICAgIGNsaWVudCAtPiBzaWduYXR1cmVfc3RvcmFnZSAiUmVxdWVzdHMgYW5kIHZhbGlkYXRlcyBhdWRpdCBzaWduYXR1cmVzIiAiaHR0cCIKCiAgICBha2Rfd2F0Y2guYXVkaXRvciAtPiBha2QgIlBvbGwgZm9yIGFuZCBkb3dubG9hZHMgYXVkaXQgcHJvb2ZzIiAiaHR0cCIKCiAgICBha2Rfd2F0Y2guZGF0YWJhc2UgLT4gYWtkX3dhdGNoLndlYiAiUmVhZHMgQUtEIG5hbWVzcGFjZSBzdGF0ZSIgewogICAgICB0YWdzICJyZWFkb25seSIKICAgIH0KICAgIGFrZF93YXRjaC5hdWRpdG9yIC0+IGFrZF93YXRjaC5kYXRhYmFzZSAiV3JpdGVzIHVwZGF0ZXMgdG8gQUtEIG5hbWVzcGFjZSBzdGF0ZSIgewogICAgICB0YWdzICJ3cml0ZSIKICAgIH0KCiAgICBha2Rfd2F0Y2guYXVkaXRvciAtPiBzaWduYXR1cmVfc3RvcmFnZSAiU3RvcmVzIGF1ZGl0IHNpZ25hdHVyZXMiCiAgICBha2Rfd2F0Y2gud2ViIC0+IHNpZ25hdHVyZV9zdG9yYWdlICJyZWFkcyBhdWRpdCBzaWduYXR1cmVzIgogIH0KCiAgdmlld3MgewogICAgc3lzdGVtTGFuZHNjYXBlICJha2Rfd2F0Y2giIHsKICAgICAgaW5jbHVkZSAqCiAgICB9CgogICAgY29udGFpbmVyIGFrZF93YXRjaCAiYWtkX3dhdGNoX3NlcnZlciIgewogICAgICBpbmNsdWRlICoKICAgIH0KCiAgICBjb250YWluZXIgYWtkX3dhdGNoICJha2Rfd2F0Y2hfd2ViIiB7CiAgICAgIGluY2x1ZGUgKgogICAgICBleGNsdWRlIGFrZF93YXRjaC5hdWRpdG9yCiAgICB9CgogICAgY29udGFpbmVyIGFrZF93YXRjaCAiYWtkX2F1ZGl0b3IiIHsKICAgICAgaW5jbHVkZSAqCiAgICAgIGV4Y2x1ZGUgYWtkX3dhdGNoLndlYgogICAgICBleGNsdWRlIGNsaWVudAogICAgfQoKICAgIHN0eWxlcyB7CiAgICAgIHRoZW1lIGRlZmF1bHQKICAgICAgZWxlbWVudCAiRWxlbWVudCIgewogICAgICAgIGNvbG9yICMzYzNiM2IKICAgICAgfQogICAgICBlbGVtZW50ICJQZXJzb24iIHsKICAgICAgICBiYWNrZ3JvdW5kICNkMzQ0MDcKICAgICAgICBzaGFwZSBwZXJzb24KICAgICAgfQogICAgICBlbGVtZW50ICJRdWV1ZSIgewogICAgICAgIHNoYXBlIHBpcGUKICAgICAgfQogICAgICBlbGVtZW50ICJDbGllbnQiIHsKICAgICAgICBzaGFwZSBtb2JpbGVEZXZpY2VQb3J0cmFpdAogICAgICB9CiAgICAgIGVsZW1lbnQgIldlYiIgewogICAgICAgIHNoYXBlIHdlYkJyb3dzZXIKICAgICAgfQogICAgICBlbGVtZW50ICJEYXRhYmFzZSIgewogICAgICAgIHNoYXBlIGN5bGluZGVyCiAgICAgIH0KICAgICAgZWxlbWVudCAiQmxvYiBTdG9yYWdlIiB7CiAgICAgICAgc2hhcGUgY3lsaW5kZXIKICAgICAgICBiYWNrZ3JvdW5kICMwOGFjOWMKICAgICAgfQogICAgICBlbGVtZW50ICJDb25maWciIHsKICAgICAgICBzaGFwZSBmb2xkZXIKICAgICAgICBiYWNrZ3JvdW5kICM2ODU5NTkKICAgICAgfQogICAgICAvLyBJbmRpY2F0ZXMgYSBzb2Z0d2FyZSBzeXN0ZW0gdGhhdCBpcyBleHRlcm5hbCB0byB0aGUgQUtEIFdhdGNoIHN5c3RlbQogICAgICBlbGVtZW50ICJFeHRlcm5hbCIgewogICAgICAgIGNvbG9yICMwMDAwMDAKICAgICAgICBiYWNrZ3JvdW5kICNiNWI1YjUKICAgICAgfQoKICAgICAgcmVsYXRpb25zaGlwICJlbnZpcm9ubWVudCIgewogICAgICAgIHN0eWxlIHNvbGlkCiAgICAgIH0KCiAgICAgIHJlbGF0aW9uc2hpcCAicmVhZG9ubHkiIHsKICAgICAgICBjb2xvciBibHVlCiAgICAgIH0KCiAgICAgIHJlbGF0aW9uc2hpcCAid3JpdGUiIHsKICAgICAgICBjb2xvciByZWQKICAgICAgfQogICAgfQogIH0KfQ=="
   },
   "views" : {
     "configuration" : {
       "branding" : { },
-      "lastSavedView" : "akd_watch_auditor",
+      "lastSavedView" : "akd_watch_server",
       "styles" : {
         "elements" : [ {
           "color" : "#3c3b3b",
@@ -277,54 +240,48 @@
     },
     "containerViews" : [ {
       "dimensions" : {
-        "height" : 2246,
-        "width" : 3301
+        "height" : 2256,
+        "width" : 3095
       },
       "elements" : [ {
         "id" : "2",
-        "x" : 1230,
-        "y" : 690
+        "x" : 220,
+        "y" : 625
       }, {
         "id" : "3",
-        "x" : 219,
-        "y" : 660
+        "x" : 920,
+        "y" : 1175
       }, {
         "id" : "4",
-        "x" : 1225,
-        "y" : 1485
+        "x" : 220,
+        "y" : 1630
       }, {
         "id" : "5",
-        "x" : 519,
-        "y" : 1620
+        "x" : 920,
+        "y" : 60
       }, {
         "id" : "6",
-        "x" : 514,
-        "y" : 1155
+        "x" : 2595,
+        "y" : 550
       }, {
         "id" : "7",
-        "x" : 724,
-        "y" : 185
+        "x" : 1764,
+        "y" : 60
       }, {
         "id" : "8",
-        "x" : 2800,
-        "y" : 930
-      }, {
-        "id" : "9",
-        "x" : 1920,
-        "y" : 870
-      }, {
-        "id" : "10",
-        "x" : 1904,
-        "y" : 225
+        "x" : 1770,
+        "y" : 625
       } ],
       "externalSoftwareSystemBoundariesVisible" : false,
       "key" : "akd_watch_server",
       "order" : 2,
       "relationships" : [ {
+        "id" : "10"
+      }, {
         "id" : "11",
         "vertices" : [ {
-          "x" : 2450,
-          "y" : 1530
+          "x" : 2090,
+          "y" : 1200
         } ]
       }, {
         "id" : "13"
@@ -332,84 +289,50 @@
         "id" : "14"
       }, {
         "id" : "15",
-        "vertices" : [ {
-          "x" : 1040,
-          "y" : 595
-        }, {
-          "x" : 1615,
-          "y" : 595
-        } ]
+        "position" : 55
       }, {
         "id" : "17"
       }, {
         "id" : "18"
       }, {
-        "id" : "19"
+        "id" : "19",
+        "position" : 55
       }, {
-        "id" : "20"
+        "id" : "21"
       }, {
-        "id" : "21",
-        "vertices" : [ {
-          "x" : 1894,
-          "y" : 525
-        } ]
-      }, {
-        "id" : "23",
-        "vertices" : [ {
-          "x" : 2425,
-          "y" : 1340
-        }, {
-          "x" : 2420,
-          "y" : 810
-        } ]
-      }, {
-        "id" : "24",
-        "vertices" : [ {
-          "x" : 329,
-          "y" : 985
-        }, {
-          "x" : 334,
-          "y" : 1595
-        } ]
-      }, {
-        "id" : "25"
-      }, {
-        "id" : "26"
+        "id" : "9",
+        "position" : 70
       } ],
       "softwareSystemId" : "1"
     }, {
       "dimensions" : {
-        "height" : 2246,
-        "width" : 3301
+        "height" : 2256,
+        "width" : 3095
       },
       "elements" : [ {
+        "id" : "3",
+        "x" : 920,
+        "y" : 1175
+      }, {
         "id" : "4",
-        "x" : 1225,
-        "y" : 1485
+        "x" : 220,
+        "y" : 1630
       }, {
         "id" : "5",
-        "x" : 519,
-        "y" : 1620
+        "x" : 920,
+        "y" : 60
       }, {
         "id" : "6",
-        "x" : 514,
-        "y" : 1155
+        "x" : 2595,
+        "y" : 550
       }, {
         "id" : "7",
-        "x" : 724,
-        "y" : 185
+        "x" : 1764,
+        "y" : 60
       }, {
         "id" : "8",
-        "x" : 2800,
-        "y" : 930
-      }, {
-        "id" : "9",
-        "x" : 1920,
-        "y" : 870
-      }, {
-        "id" : "10",
-        "x" : 1904,
-        "y" : 225
+        "x" : 1770,
+        "y" : 625
       } ],
       "externalSoftwareSystemBoundariesVisible" : false,
       "key" : "akd_watch_web",
@@ -417,144 +340,61 @@
       "relationships" : [ {
         "id" : "11",
         "vertices" : [ {
-          "x" : 2450,
-          "y" : 1530
+          "x" : 2090,
+          "y" : 1200
         } ]
       }, {
-        "id" : "13"
-      }, {
-        "id" : "14"
-      }, {
-        "id" : "18"
-      }, {
-        "id" : "23",
-        "vertices" : [ {
-          "x" : 2425,
-          "y" : 1340
-        }, {
-          "x" : 2420,
-          "y" : 810
-        } ]
-      }, {
-        "id" : "26"
-      } ],
-      "softwareSystemId" : "1"
-    }, {
-      "dimensions" : {
-        "height" : 2246,
-        "width" : 3301
-      },
-      "elements" : [ {
-        "id" : "2",
-        "x" : 1230,
-        "y" : 690
-      }, {
-        "id" : "5",
-        "x" : 519,
-        "y" : 1620
-      }, {
-        "id" : "6",
-        "x" : 514,
-        "y" : 1155
-      }, {
-        "id" : "7",
-        "x" : 724,
-        "y" : 185
-      }, {
-        "id" : "8",
-        "x" : 2800,
-        "y" : 930
-      }, {
-        "id" : "9",
-        "x" : 1920,
-        "y" : 870
-      }, {
-        "id" : "10",
-        "x" : 1904,
-        "y" : 225
-      } ],
-      "externalSoftwareSystemBoundariesVisible" : false,
-      "key" : "akd_watch_auditor",
-      "order" : 4,
-      "relationships" : [ {
         "id" : "13"
       }, {
         "id" : "14"
       }, {
         "id" : "17"
       }, {
-        "id" : "20"
+        "id" : "21"
       }, {
-        "id" : "21",
-        "vertices" : [ {
-          "x" : 1894,
-          "y" : 525
-        } ]
-      }, {
-        "id" : "25"
+        "id" : "9",
+        "position" : 70
       } ],
       "softwareSystemId" : "1"
     }, {
       "dimensions" : {
-        "height" : 2246,
-        "width" : 3301
+        "height" : 2256,
+        "width" : 3095
       },
       "elements" : [ {
-        "id" : "3",
-        "x" : 219,
-        "y" : 660
+        "id" : "2",
+        "x" : 220,
+        "y" : 625
+      }, {
+        "id" : "4",
+        "x" : 220,
+        "y" : 1630
       }, {
         "id" : "5",
-        "x" : 519,
-        "y" : 1620
-      }, {
-        "id" : "6",
-        "x" : 514,
-        "y" : 1155
+        "x" : 920,
+        "y" : 60
       }, {
         "id" : "7",
-        "x" : 724,
-        "y" : 185
+        "x" : 1764,
+        "y" : 60
       }, {
         "id" : "8",
-        "x" : 2800,
-        "y" : 930
-      }, {
-        "id" : "9",
-        "x" : 1920,
-        "y" : 870
-      }, {
-        "id" : "10",
-        "x" : 1904,
-        "y" : 225
+        "x" : 1770,
+        "y" : 625
       } ],
       "externalSoftwareSystemBoundariesVisible" : false,
-      "key" : "akd_watch_watcher",
-      "order" : 5,
+      "key" : "akd_auditor",
+      "order" : 4,
       "relationships" : [ {
-        "id" : "13"
-      }, {
-        "id" : "14"
+        "id" : "10"
       }, {
         "id" : "15",
-        "vertices" : [ {
-          "x" : 1040,
-          "y" : 595
-        }, {
-          "x" : 1615,
-          "y" : 595
-        } ]
+        "position" : 55
       }, {
-        "id" : "19"
+        "id" : "18"
       }, {
-        "id" : "24",
-        "vertices" : [ {
-          "x" : 329,
-          "y" : 985
-        }, {
-          "x" : 334,
-          "y" : 1595
-        } ]
+        "id" : "19",
+        "position" : 55
       } ],
       "softwareSystemId" : "1"
     } ],
@@ -568,15 +408,15 @@
         "x" : 667,
         "y" : 882
       }, {
-        "id" : "8",
+        "id" : "6",
         "x" : 729,
         "y" : 165
       }, {
-        "id" : "9",
+        "id" : "7",
         "x" : 1227,
         "y" : 1362
       }, {
-        "id" : "10",
+        "id" : "8",
         "x" : 200,
         "y" : 1365
       } ],
@@ -600,7 +440,7 @@
       }, {
         "id" : "16"
       }, {
-        "id" : "22"
+        "id" : "20"
       } ]
     } ]
   }

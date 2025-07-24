@@ -106,22 +106,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "akd_watch_watcher"
-version = "0.1.0"
-dependencies = [
- "akd",
- "akd_watch_common",
- "azure_storage",
- "azure_storage_blobs",
- "serde",
- "serde_json",
- "thiserror 1.0.69",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "akd_watch_web"
 version = "0.1.0"
 dependencies = [

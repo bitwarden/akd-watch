@@ -1,14 +1,13 @@
 mod in_memory_storage;
-mod in_memory_queue;
+pub mod namespace_repository;
 pub mod whatsapp_akd_storage;
 
 use std::fmt::{Display, Debug};
 
 use akd::{local_auditing::{AuditBlob, AuditBlobName}};
 pub use in_memory_storage::InMemoryStorage;
-pub use in_memory_queue::InMemoryQueue;
 
-use crate::{AuditRequest, EpochSignature};
+use crate::{EpochSignature, SerializableAuditBlobName};
 
 pub trait SignatureStorage: Clone + Debug + Send + Sync {
     fn has_signature(&self, epoch: &u64) -> impl Future<Output = bool> + Send;
@@ -22,10 +21,10 @@ pub trait SignatureStorage: Clone + Debug + Send + Sync {
 }
 
 pub trait AuditRequestQueue: Clone + Debug + Send + Sync {
-    fn enqueue(&mut self, request: AuditRequest) -> impl Future<Output = ()> + Send;
-    fn enqueue_n(&mut self, requests: Vec<AuditRequest>) -> impl Future<Output = ()> + Send;
-    fn dequeue(&mut self) -> impl Future<Output = Option<AuditRequest>> + Send;
-    fn dequeue_n(&mut self, n: usize) -> impl Future<Output = Vec<AuditRequest>> + Send;
+    fn enqueue(&mut self, request: SerializableAuditBlobName) -> impl Future<Output = ()> + Send;
+    fn enqueue_n(&mut self, requests: Vec<SerializableAuditBlobName>) -> impl Future<Output = ()> + Send;
+    fn dequeue(&mut self) -> impl Future<Output = Option<SerializableAuditBlobName>> + Send;
+    fn dequeue_n(&mut self, n: usize) -> impl Future<Output = Vec<SerializableAuditBlobName>> + Send;
 }
 
 pub trait AkdStorage: Clone + Display + Debug + Send + Sync {

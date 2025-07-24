@@ -11,24 +11,13 @@ workspace "AKD Watch System" {
       description "The AKD Watch system that audits the AKD"
 
       auditor = container "Auditor" {
-        description "The component that audits the AKD"
-        technology "Rust"
-      }
-
-      watcher = container "Watcher" {
-        description "The component that watches the AKD for new published audit proofs"
-        technology "Rust"
+        description "The component that polls the AKD for new proofs, verifies the, and signs verified proofs"
+        technology "Rust and reqwest"
       }
 
       web = container "Web" {
         description "The web interface for AKD Watch"
         technology "Rust with Axum"
-      }
-
-      audit_queue = container "Audit Request Queue" {
-        description "fault-tolerant queue to store audit requests"
-        tags "Queue"
-        // technology "Azure Queue or relational database-mediated queue"
       }
 
       database = container "Database" {
@@ -59,22 +48,16 @@ workspace "AKD Watch System" {
       tags "Blob Storage"
     }
 
+    akd_watch.config -> akd_watch.web "Reads configuration" "environment" "environment"
+    akd_watch.config -> akd_watch.auditor "Reads configuration" "environment" "environment"
 
     client -> akd_watch.web "Requests and validates audit signatures for required epochs" "http"
     client -> akd "Requests and validates lookup and history proofs" "http"
     client -> signature_storage "Requests and validates audit signatures" "http"
 
-    akd_watch.watcher -> akd "Poll for audit proofs" "http"
-    akd_watch.auditor -> akd "Downloads and audits epoch proofs" "http"
-
-    // akd_watch.config -> akd_watch.web "Reads configuration" "environment" "environment"
-    // akd_watch.config -> akd_watch.auditor "Reads configuration" "environment" "environment"
-    // akd_watch.config -> akd_watch.watcher "Reads configuration" "environment" "environment"
+    akd_watch.auditor -> akd "Poll for and downloads audit proofs" "http"
 
     akd_watch.database -> akd_watch.web "Reads AKD namespace state" {
-      tags "readonly"
-    }
-    akd_watch.database -> akd_watch.watcher "Reads AKD namespace state" {
       tags "readonly"
     }
     akd_watch.auditor -> akd_watch.database "Writes updates to AKD namespace state" {
@@ -83,11 +66,6 @@ workspace "AKD Watch System" {
 
     akd_watch.auditor -> signature_storage "Stores audit signatures"
     akd_watch.web -> signature_storage "reads audit signatures"
-
-    akd_watch.watcher -> akd_watch.audit_queue "Enqueue new audit proofs to be audited"
-    akd_watch.audit_queue -> akd_watch.auditor "Dequeue audit proofs to be audited"
-
-    akd_watch.web -> akd_watch.audit_queue "Enqueue missing audit signatures"
   }
 
   views {
@@ -102,19 +80,12 @@ workspace "AKD Watch System" {
     container akd_watch "akd_watch_web" {
       include *
       exclude akd_watch.auditor
-      exclude akd_watch.watcher
     }
 
-    container akd_watch "akd_watch_auditor" {
+    container akd_watch "akd_auditor" {
       include *
       exclude akd_watch.web
-      exclude akd_watch.watcher
-    }
-
-    container akd_watch "akd_watch_watcher" {
-      include *
-      exclude akd_watch.web
-      exclude akd_watch.auditor
+      exclude client
     }
 
     styles {
@@ -163,7 +134,6 @@ workspace "AKD Watch System" {
       relationship "write" {
         color red
       }
-
     }
   }
 }

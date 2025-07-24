@@ -1,8 +1,16 @@
-use anyhow::{Result, anyhow};
+use akd_watch_common::SerializableAuditBlobName;
+use anyhow::Result;
+use tracing::{instrument, trace};
 use tracing_subscriber;
 
 use akd_watch_common::{
-    configurations::verify_consecutive_append_only, crypto::SigningKey, storage::{whatsapp_akd_storage::WhatsAppAkdStorage, AkdStorage, AuditRequestQueue, InMemoryQueue, InMemoryStorage, SignatureStorage}, AuditRequest, EpochSignature
+    AuditVersion, EpochSignature, NamespaceInfo, NamespaceStatus,
+    configurations::{AkdConfiguration, verify_consecutive_append_only},
+    crypto::SigningKey,
+    storage::{
+        AkdStorage, InMemoryStorage, SignatureStorage,
+        whatsapp_akd_storage::WhatsAppAkdStorage,
+    },
 };
 
 mod error;
@@ -11,113 +19,167 @@ mod error;
 async fn main() {
     tracing_subscriber::fmt::init();
 
+    // TODO: load namespaces from configuration
+    let infos = vec![NamespaceInfo {
+        configuration: AkdConfiguration::WhatsAppV1Configuration,
+        name: "example_namespace".to_string(),
+        log_directory: Some("logs/example_namespace".to_string()),
+        last_verified_epoch: None,
+        status: NamespaceStatus::Online,
+        signature_version: AuditVersion::One,
+    }];
+    let namespaces = infos
+        .into_iter()
+        .map(|info| Namespace {
+            info,
+            akd_storage: WhatsAppAkdStorage::new(),
+            signature_storage: InMemoryStorage::new(),
+        })
+        .collect::<Vec<_>>();
 
-    let storage = InMemoryStorage::new();
-    let mut queue = InMemoryQueue::new();
-    // TODO: replace with namepaced akd list
-    let akd = WhatsAppAkdStorage::new();
-
-    // TODO: Replace with actual signing key retrieval
+    // TODO: load from configuration
+    let sleep_time = std::time::Duration::from_secs(20);
+    // TODO: load from configuration
     let signing_key = SigningKey::generate();
 
-    println!("Listening for audit requests.");
-    while let Some(audit_request) = queue.dequeue().await {
-        let storage = storage.clone();
-        let secret_key = signing_key.clone();
-        let akd = akd.clone();
-        // spawn a thread to handle each audit request
+    for namespace in namespaces {
+        let mut namespace = namespace.clone();
+        let signing_key = signing_key.clone();
         tokio::spawn(async move {
-            // Process the audit request
-            match process_audit_request(audit_request.clone(), storage, secret_key, akd).await {
-                Ok(_) => {
-                    println!("Processed audit request successfully for request {:?}", audit_request);
-                },
-                Err(e) => {
-                    eprintln!("Error processing audit request: {:?}", e);
+            loop {
+                // query for new epochs
+                let blob_names = match poll_for_new_epochs(namespace.clone()).await {
+                    Ok(audit_requests) => {
+                        trace!(
+                            namespace = namespace.info.name,
+                            "Polled for new epochs successfully"
+                        );
+                        audit_requests
+                    }
+                    Err(e) => {
+                        trace!(namespace = namespace.info.name, error = %e, "Failed to poll for new epochs");
+                        tokio::time::sleep(sleep_time).await;
+                        continue;
+                    }
+                };
+
+                // audit all the new epochs
+                for blob_name in &blob_names {
+                    match process_audit_request(blob_name, &mut namespace, &signing_key).await {
+                        Ok(_) => trace!(
+                            namespace = namespace.info.name,
+                            epoch = blob_name.epoch,
+                            blob_name = blob_name.to_string(),
+                            "Processed audit request successfully"
+                        ),
+                        Err(e) => {
+                            trace!(namespace = namespace.info.name, epoch = blob_name.epoch, blob_name = blob_name.to_string(), error = %e, "Error processing audit request")
+                        }
+                    }
                 }
-            };
+
+                // if we processed some requests, we don't need to sleep
+                if blob_names.is_empty() {
+                    trace!(namespace = namespace.info.name, sleep_time = ?sleep_time, "Sleeping for next poll");
+                    tokio::time::sleep(sleep_time).await;
+                }
+            }
         });
     }
-    println!("Stopped listening for audit requests.");
 }
 
-async fn process_audit_request(
-    request: AuditRequest,
-    mut storage: impl SignatureStorage,
-    mut signing_key: SigningKey,
-    akd: impl AkdStorage,
-) -> Result<()> {
-    let blob_name = request.parse_blob_name()?;
+#[derive(Clone, Debug)]
+struct Namespace<A: AkdStorage, S: SignatureStorage> {
+    pub info: NamespaceInfo,
+    pub akd_storage: A,
+    pub signature_storage: S,
+}
 
+/// Polls the AKD for a list of unaudited epochs and returns a list of `AuditRequest`s.
+#[instrument(level = "trace", skip_all, fields(namespace = namespace.info.name))]
+async fn poll_for_new_epochs<A: AkdStorage, S: SignatureStorage>(
+    namespace: Namespace<A, S>,
+) -> Result<Vec<SerializableAuditBlobName>> {
+    let akd = namespace.akd_storage;
+    let signatures = namespace.signature_storage;
+
+    // get the latest signed epoch
+    let mut last_known_epoch = signatures.latest_signed_epoch().await;
+
+    // Check if the namespace has a proof for the latest epoch
+    let mut result = Vec::new();
+    loop {
+        if akd.has_proof(last_known_epoch).await {
+            trace!(akd = %akd, epoch = last_known_epoch, "AKD has published a new proof");
+
+            if let Ok(proof_name) = akd.get_proof_name(last_known_epoch).await {
+                // Add the proof name to the queue
+                trace!(akd = %akd, epoch = last_known_epoch, proof_name = proof_name.to_string(), "Retrieved proof name");
+                result.push(proof_name.into());
+                // increment the epoch and continue to check for the next one
+                last_known_epoch += 1;
+                continue;
+            } else {
+                trace!(akd = %akd, epoch = last_known_epoch, "Failed to retrieve proof name for epoch");
+                break;
+            }
+        } else {
+            trace!(akd = %akd, epoch = last_known_epoch, "AKD has not published a proof for this epoch, yet");
+            break;
+        }
+    }
+
+    Ok(result)
+}
+
+/// Downloads the audit proof for the given `AuditRequest`, verifies it, and stores the signature if successful.
+#[instrument(level = "trace", skip_all, fields(namespace = namespace.info.name, blob_name = blob_name.to_string()))]
+async fn process_audit_request(
+    blob_name: &SerializableAuditBlobName,
+    namespace: &mut Namespace<impl AkdStorage, impl SignatureStorage>,
+    signing_key: &SigningKey,
+) -> Result<()> {
     // if we've signed this epoch, skip it
-    if storage.get_signature(&blob_name.epoch).await.is_some() {
+    if namespace
+        .signature_storage
+        .get_signature(&blob_name.epoch)
+        .await
+        .is_some()
+    {
         return Ok(());
     }
 
     // download the blob
-    // TODO: lookup namespace url
-    let audit_blob = akd.get_proof(&blob_name).await?;
-    // Note we ignore start_hash because we want to tie it to previously verified audits, so we
-    // download the signature for the previous epoch
-    let (end_epoch, _, end_hash, proof) =
-        audit_blob.decode().map_err(|err| anyhow!("{:?}", err))?;
-    let previous_epoch = blob_name.epoch - 1;
+    let audit_blob = namespace.akd_storage.get_proof(&blob_name.into()).await?;
 
-    // get the previous signature
-    let missing_epochs = missing_previous_signatures(storage.clone(), previous_epoch).await?;
-    if !missing_epochs.is_empty() {
-        // TODO: Enqueue the missing epochs. This will heal signature storage for this range
-        return Err(anyhow!(
-            "Missing previous signatures for epochs: {:?}",
-            missing_epochs
-        ));
-    }
-    let Some(previous_signature) = storage.get_signature(&previous_epoch).await else {
-        return Err(anyhow!(
-            "Unable to find signature for previous epoch: {}",
-            previous_epoch
-        ));
-    };
+    // decode the blob
+    let (end_epoch, previous_hash, end_hash, proof) = audit_blob
+        .decode()
+        .map_err(|e| anyhow::anyhow!("Failed to decode audit blob: {:?}", e))?;
 
-    // Verify the audit proof
-    _ = verify_consecutive_append_only(
-        &request.namespace.configuration,
+    // verify the proof
+    verify_consecutive_append_only(
+        &namespace.info.configuration,
         &proof,
-        previous_signature.epoch_root_hash()?,
+        previous_hash,
         end_hash,
         end_epoch,
     )
     .await?;
 
-    // Generate an epoch signature
+    // sign the proof
     let signature = EpochSignature::sign(
-        request.namespace,
+        namespace.info.clone(),
         end_epoch.into(),
         end_hash,
-        &mut signing_key,
+        &mut signing_key.clone(),
     )?;
 
-    // Store the signature
-    storage.set_signature(blob_name.epoch, signature).await;
+    // store the signature
+    namespace
+        .signature_storage
+        .set_signature(end_epoch, signature)
+        .await;
 
     Ok(())
-}
-
-async fn missing_previous_signatures(
-    storage: impl SignatureStorage,
-    mut epoch: u64,
-) -> Result<Vec<u64>> {
-    let mut missing_epochs = Vec::new();
-    loop {
-        if epoch == 0 {
-            break;
-        }
-        if storage.has_signature(&epoch).await {
-            break;
-        }
-        missing_epochs.push(epoch);
-        epoch -= 1;
-    }
-    missing_epochs.reverse();
-    Ok(missing_epochs)
 }

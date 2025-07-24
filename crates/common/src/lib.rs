@@ -1,4 +1,4 @@
-mod audit_request;
+mod audit_blob_name;
 mod namespace_info;
 mod versions;
 mod error;
@@ -7,7 +7,7 @@ pub mod crypto;
 pub mod storage;
 pub mod configurations;
 
-pub use audit_request::AuditRequest;
+pub use audit_blob_name::SerializableAuditBlobName;
 pub use namespace_info::*;
 pub use versions::*;
 pub use error::AkdWatchError;
