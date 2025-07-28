@@ -92,6 +92,7 @@ name = "akd_watch_common"
 version = "0.1.0"
 dependencies = [
  "akd",
+ "async-trait",
  "chrono",
  "ed25519-dalek",
  "hex",
@@ -99,7 +100,7 @@ dependencies = [
  "reqwest 0.12.22",
  "serde",
  "serde_json",
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
  "tracing",
  "tracing-subscriber",
  "uuid",

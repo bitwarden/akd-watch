@@ -1,21 +1,33 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{configurations::AkdConfiguration, AuditVersion, Epoch};
+use crate::{configurations::AkdConfiguration, storage::{whatsapp_akd_storage::WhatsAppAkdStorage, AkdStorage}, Epoch};
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum NamespaceStatus {
+    /// Indicates that the namespace is auditing proofs and has not failed to verify any of them.
     Online,
     Initialization,
     Disabled,
+    /// Indicates that a previously audited signature could not be found in signature storage. The Directory must be re-audited from the beginning.
+    SignatureLost,
+    /// Indicates that the auditor has downloaded a proof that failed verification. Future audits are not performed and the AKD should not be trusted.
+    SignatureVerificationFailed,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NamespaceInfo {
     pub configuration: AkdConfiguration,
     pub name: String,
-    pub log_directory: Option<String>,
-    pub last_verified_epoch: Option<Epoch>,
+    pub log_directory: String,
+    pub last_verified_epoch: Epoch,
     pub status: NamespaceStatus,
-    pub signature_version: AuditVersion,
-    // TODO: do we need to track the cipher suite of the namespace audit proofs?
+}
+
+impl NamespaceInfo {
+    pub fn akd_storage(&self) -> impl AkdStorage{
+        match &self.configuration {
+            AkdConfiguration::WhatsAppV1Configuration => WhatsAppAkdStorage::new(),
+            _ => todo!("Unsupported configuration: {:?}", self.configuration),
+        }
+    }
 }
