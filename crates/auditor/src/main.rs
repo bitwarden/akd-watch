@@ -48,6 +48,7 @@ async fn main() {
     for namespace in infos {
         let signing_key = signing_key.clone();
         let namespace_repository = namespace_repository.clone();
+        let signature_storage = signature_storage.get(&namespace.name).expect("missing signature storage").clone();
         tokio::spawn(async move {
             loop {
                 // query for latest namespace info
@@ -64,8 +65,7 @@ async fn main() {
                     ));
                 let mut namespace = Namespace {
                     info: namespace_info,
-                    // TODO: this storage isn't doing anything, we need to send this between loops, loaded from configuration
-                    signature_storage: InMemoryStorage::new(),
+                    signature_storage: signature_storage.clone(),
                 };
                 // query for new epochs
                 let blob_names = match poll_for_new_epochs(namespace.clone()).await {
