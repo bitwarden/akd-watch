@@ -127,28 +127,28 @@ async fn poll_for_new_epochs<S: SignatureStorage>(
     let akd = namespace.info.akd_storage();
     let signatures = namespace.signature_storage;
 
-    // get the latest signed epoch
-    let mut last_known_epoch = signatures.latest_signed_epoch().await;
+    // get the next epoch to audit
+    let mut next_epoch = signatures.latest_signed_epoch().await + 1;
 
-    // Check if the namespace has a proof for the latest epoch
+    // Check if the namespace has a proof for the next epoch
     let mut result = Vec::new();
     loop {
-        if akd.has_proof(last_known_epoch).await {
-            info!(akd = %akd, epoch = last_known_epoch, "AKD has published a new proof");
+        if akd.has_proof(next_epoch).await {
+            info!(akd = %akd, epoch = next_epoch, "AKD has published a new proof");
 
-            if let Ok(proof_name) = akd.get_proof_name(last_known_epoch).await {
+            if let Ok(proof_name) = akd.get_proof_name(next_epoch).await {
                 // Add the proof name to the queue
-                info!(akd = %akd, epoch = last_known_epoch, proof_name = proof_name.to_string(), "Retrieved proof name");
+                info!(akd = %akd, epoch = next_epoch, proof_name = proof_name.to_string(), "Retrieved proof name");
                 result.push(proof_name.into());
                 // increment the epoch and continue to check for the next one
-                last_known_epoch += 1;
+                next_epoch += 1;
                 continue;
             } else {
-                warn!(akd = %akd, epoch = last_known_epoch, "Failed to retrieve proof name for epoch");
+                warn!(akd = %akd, epoch = next_epoch, "Failed to retrieve proof name for epoch");
                 break;
             }
         } else {
-            trace!(akd = %akd, epoch = last_known_epoch, "AKD has not published a proof for this epoch, yet");
+            trace!(akd = %akd, epoch = next_epoch, "AKD has not published a proof for this epoch, yet");
             break;
         }
     }
