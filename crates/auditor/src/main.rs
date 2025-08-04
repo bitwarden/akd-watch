@@ -9,8 +9,8 @@ use tracing::{info, instrument, trace, warn};
 use tracing_subscriber;
 
 use akd_watch_common::{
-     EpochSignature, NamespaceInfo, NamespaceStatus,
-    configurations::{AkdConfiguration, verify_consecutive_append_only},
+     EpochSignature, NamespaceInfo,
+    configurations::verify_consecutive_append_only,
     crypto::SigningKey,
     storage::{
         AkdStorage, InMemoryStorage, SignatureStorage,
@@ -18,20 +18,22 @@ use akd_watch_common::{
 };
 
 mod error;
+mod config;
+
+use config::AuditorConfig;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
-    // TODO: load namespaces from configuration
-    let infos = vec![NamespaceInfo {
-        configuration: AkdConfiguration::WhatsAppV1Configuration,
-        name: "example_namespace".to_string(),
-        log_directory: "logs/example_namespace".to_string(),
-        last_verified_epoch: 0.into(),
-        status: NamespaceStatus::Online,
-    }];
-    let namespace_repository = init_namespace_repository(&infos).await;
+    // Load configuration
+    let config = AuditorConfig::load()
+        .expect("Failed to load configuration. Please check your config file or environment variables.");
+    
+    info!("Loaded configuration with {} namespaces", config.namespaces.len());
+
+    // Initialize namespace repository and convert configs to namespace infos
+    let (namespace_repository, infos) = init_namespace_repository(&config.namespaces).await?;
     let signature_storage = infos
         .iter()
         .fold(HashMap::new(), |mut agg, item| {
@@ -40,9 +42,13 @@ async fn main() {
             agg
         });
 
-    // TODO: load from configuration
-    let sleep_time = std::time::Duration::from_secs(20);
-    // TODO: load from configuration
+    // Load sleep time from configuration
+    let sleep_time = config.sleep_duration();
+    
+    // TODO: Implement proper signing key management:
+    // - Store key_id next to keys in the keyfile
+    // - Support key rotation with current and past keys stored in the keyfile
+    // - Add config for key lifetime and forced rotation
     let signing_key = SigningKey::generate();
 
     for namespace in infos {
@@ -111,6 +117,8 @@ async fn main() {
             }
         });
     }
+    
+    Ok(())
 }
 
 #[derive(Clone, Debug)]
@@ -228,26 +236,46 @@ async fn process_audit_request(
 
 #[instrument(level = "info", skip_all)]
 async fn init_namespace_repository(
-    configured_namespaces: &Vec<NamespaceInfo>,
-) -> InMemoryNamespaceRepository {
+    namespace_configs: &[config::NamespaceConfig],
+) -> Result<(InMemoryNamespaceRepository, Vec<NamespaceInfo>)> {
     let mut namespace_repository = InMemoryNamespaceRepository::new();
 
-    let namespaces = namespace_repository
+    let existing_namespaces = namespace_repository
         .list_namespaces()
         .await
         .unwrap_or_default();
-    // Ensure namespaces are in the repository
-    for namespace in configured_namespaces {
-        if namespaces.iter().any(|n| n.name == namespace.name) {
-            info!(namespace = ?namespace, "Namespace already exists in repository, skipping");
-            continue;
+
+    let mut infos = Vec::new();
+    
+    for ns_config in namespace_configs {
+        // Check if namespace already exists in the repository
+        let existing_info = existing_namespaces
+            .iter()
+            .find(|info| info.name == ns_config.name);
+        
+        // Convert config to namespace info, preserving existing last_verified_epoch if available
+        let (namespace_info, status_changed) = ns_config.to_namespace_info(existing_info)
+            .map_err(|e| anyhow::anyhow!("Configuration error for namespace {}: {}", ns_config.name, e))?;
+        
+        // Add to repository if it doesn't exist, or update if status changed
+        if existing_info.is_none() {
+            info!(namespace = ?namespace_info, "Adding new namespace to repository");
+            namespace_repository
+                .add_namespace(namespace_info.clone())
+                .await
+                .map_err(|e| anyhow::anyhow!("Failed to add namespace {}: {}", ns_config.name, e))?;
+        } else if status_changed {
+            info!(namespace = ns_config.name, old_status = ?existing_info.unwrap().status, new_status = ?namespace_info.status, "Updating namespace status in repository");
+            namespace_repository
+                .update_namespace(namespace_info.clone())
+                .await
+                .map_err(|e| anyhow::anyhow!("Failed to update namespace {}: {}", ns_config.name, e))?;
+        } else {
+            info!(namespace = ns_config.name, "Using existing namespace from repository (no changes)");
         }
-        info!(namespace = ?namespace, "Adding namespace to repository");
-        namespace_repository
-            .add_namespace(namespace.clone())
-            .await
-            .unwrap();
+        
+        infos.push(namespace_info);
     }
 
-    namespace_repository
+    Ok((namespace_repository, infos))
 }

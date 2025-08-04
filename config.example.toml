@@ -1,0 +1,46 @@
+# Example configuration file for akd-watch auditor
+# This file can be named config.toml, config.yaml, or config.json
+
+# Optional: How long to sleep between audit cycles (in seconds, defaults to 30)
+sleep_seconds = 30
+
+# Signing key configuration
+[signing]
+# Path to signing key file (required)
+key_file = "/path/to/signing/keys.json"
+
+# Storage configuration - choose one of the following:
+
+# Option 1: In-memory storage (good for testing)
+[storage]
+type = "InMemory"
+
+# Option 2: File-based storage
+# [storage]
+# type = "File"
+# directory = "/var/lib/akd-watch/storage"
+
+# Option 3: Azure Blob storage
+# [storage]
+# type = "Azure"
+# account_name = "your_storage_account"
+# container_name = "your_container"
+# connection_string = "your_connection_string"  # Optional in config file
+# 
+# Note: Azure storage requires a connection string either in the config file
+# or via the AZURE_STORAGE_CONNECTION_STRING environment variable
+
+# Namespace configurations
+[[namespaces]]
+name = "example_namespace"
+configuration_type = "WhatsAppV1"  # Options: "WhatsAppV1", "BitwardenV1"
+log_directory = "logs/example_namespace"
+starting_epoch = 0  # Optional: epoch to start auditing from (defaults to 0)
+status = "Online"  # Options: "Online", "Disabled"
+
+[[namespaces]]
+name = "bitwarden_namespace"
+configuration_type = "BitwardenV1"
+log_directory = "logs/bitwarden_namespace"
+starting_epoch = 10  # Optional: epoch to start auditing from (defaults to 0)
+status = "Online"
