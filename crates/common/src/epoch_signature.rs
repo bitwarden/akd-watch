@@ -80,7 +80,7 @@ impl EpochSignedMessage {
 }
 
 impl EpochSignature {
-    pub fn sign(namespace: NamespaceInfo, epoch: Epoch, epoch_root_hash: [u8;32], signing_key: &mut SigningKey) -> Result<Self, AkdWatchError> {
+    pub fn sign(namespace: NamespaceInfo, epoch: Epoch, epoch_root_hash: [u8;32], signing_key: &SigningKey) -> Result<Self, AkdWatchError> {
         let message = EpochSignedMessage {
             ciphersuite: Ciphersuite::default(),
             namespace: namespace.name.clone(),

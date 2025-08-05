@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use akd_watch_common::{
-    SerializableAuditBlobName,
-    storage::namespace_repository::{ InMemoryNamespaceRepository, NamespaceRepository},
+    storage::{namespace_repository::{InMemoryNamespaceRepository, NamespaceRepository}, signing_key_repository::InMemorySigningKeyRepository}, 
+    SerializableAuditBlobName
 };
 use anyhow::Result;
 use tracing::{info, instrument, trace, warn};
@@ -11,9 +11,8 @@ use tracing_subscriber;
 use akd_watch_common::{
      EpochSignature, NamespaceInfo,
     akd_configurations::verify_consecutive_append_only,
-    crypto::SigningKey,
     storage::{
-        AkdStorage, InMemoryStorage, SignatureStorage,
+        AkdStorage, InMemoryStorage, SignatureStorage, signing_key_repository::SigningKeyRepository
     },
 };
 
@@ -45,14 +44,13 @@ async fn main() -> Result<()> {
     // Load sleep time from configuration
     let sleep_time = config.sleep_duration();
     
-    // TODO: Implement proper signing key management:
-    // - Store key_id next to keys in the keyfile
-    // - Support key rotation with current and past keys stored in the keyfile
-    // - Add config for key lifetime and forced rotation
-    let signing_key = SigningKey::generate(chrono::Duration::seconds(config.signing.key_lifetime_seconds));
+    // TODO: signing key management:
+    // - File-based key storage
+    // - Add config for forced rotation
+    let signing_key_repository = InMemorySigningKeyRepository::new(chrono::Duration::seconds(config.signing.key_lifetime_seconds));
 
     for namespace in infos {
-        let signing_key = signing_key.clone();
+        let signing_key_repository = signing_key_repository.clone();
         let namespace_repository = namespace_repository.clone();
         let signature_storage = signature_storage.get(&namespace.name).expect("missing signature storage").clone();
         tokio::spawn(async move {
@@ -96,7 +94,7 @@ async fn main() -> Result<()> {
 
                 // audit all the new epochs
                 for blob_name in &blob_names {
-                    match process_audit_request(blob_name, &mut namespace, &signing_key).await {
+                    match process_audit_request(blob_name, &mut namespace, &signing_key_repository).await {
                         Ok(_) => info!(
                             namespace = namespace.info.name,
                             epoch = blob_name.epoch,
@@ -104,6 +102,7 @@ async fn main() -> Result<()> {
                             "Processed audit request successfully"
                         ),
                         Err(e) => {
+                            // TODO: handle specific errors and update namespace status accordingly
                             warn!(namespace = namespace.info.name, epoch = blob_name.epoch, blob_name = blob_name.to_string(), error = %e, "Error processing audit request")
                         }
                     }
@@ -166,12 +165,13 @@ async fn poll_for_new_epochs<S: SignatureStorage>(
 
 /// Downloads the audit proof for the given `AuditRequest`, verifies it, and stores the signature if successful.
 #[instrument(level = "info", skip_all, fields(namespace = namespace.info.name, blob_name = blob_name.to_string()))]
-async fn process_audit_request(
+async fn process_audit_request<S: SigningKeyRepository>(
     blob_name: &SerializableAuditBlobName,
     namespace: &mut Namespace<impl SignatureStorage>,
-    signing_key: &SigningKey,
+    signing_key_repository: &S,
 ) -> Result<()> {
     // if we've signed this epoch, skip it
+    // TODO: verify this signature. if it's not valid, throw an error
     if namespace
         .signature_storage
         .get_signature(&blob_name.epoch)
@@ -194,6 +194,7 @@ async fn process_audit_request(
     );
 
     // decode the blob
+    // TODO: do not use previous_hash, download the previous signature, verify it, and if it's missing or unverified, throw an error
     let (end_epoch, previous_hash, end_hash, proof) = audit_blob
         .decode()
         .map_err(|e| anyhow::anyhow!("Failed to decode audit blob: {:?}", e))?;
@@ -210,11 +211,12 @@ async fn process_audit_request(
     trace!(namespace = namespace.info.name, end_epoch, previous_hash = ?previous_hash, end_hash = ?end_hash, "Verified audit proof");
 
     // sign the proof
+    let current_signing_key = signing_key_repository.get_current_signing_key().await;
     let signature = EpochSignature::sign(
         namespace.info.clone(),
         end_epoch.into(),
         end_hash,
-        &mut signing_key.clone(),
+        &current_signing_key,
     )?;
     trace!(
         namespace = namespace.info.name,

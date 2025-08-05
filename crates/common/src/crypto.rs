@@ -52,6 +52,15 @@ impl SigningKey {
             not_after_date: self.not_after_date,
         })
     }
+
+    pub fn is_expired(&self) -> bool {
+        Utc::now() > self.not_after_date
+    }
+
+    /// Marks this key as expired by setting its expiration date to now
+    pub fn expire(&mut self) {
+        self.not_after_date = Utc::now();
+    }
 }
 
 #[derive(Clone, Debug)]

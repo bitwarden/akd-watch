@@ -1,6 +1,7 @@
 mod in_memory_storage;
 pub mod namespace_repository;
 pub mod whatsapp_akd_storage;
+pub mod signing_key_repository;
 
 use std::{fmt::{Debug, Display}};
 
