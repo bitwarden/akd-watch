@@ -1,7 +1,7 @@
 use config::{Config, ConfigError, File, Environment};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
-use akd_watch_common::NamespaceInfo;
+use akd_watch_common::{akd_configurations::AkdConfiguration, NamespaceInfo, NamespaceStatus};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum AkdConfigurationType {
@@ -170,8 +170,6 @@ impl NamespaceConfig {
     /// 
     /// Returns a tuple of (NamespaceInfo, bool) where the bool indicates if the status was changed. New namespaces will not count as a change.
     pub fn to_namespace_info(&self, existing_namespace_info: Option<&NamespaceInfo>) -> Result<(NamespaceInfo, bool), ConfigError> {
-        use akd_watch_common::configurations::AkdConfiguration;
-        
         let configuration = match self.configuration_type {
             AkdConfigurationType::WhatsAppV1 => AkdConfiguration::WhatsAppV1Configuration,
             AkdConfigurationType::BitwardenV1 => AkdConfiguration::BitwardenV1Configuration,
@@ -204,20 +202,18 @@ impl NamespaceConfig {
     /// Returns (new_status, status_changed)
     fn resolve_status_transition(
         config_status: &ConfigNamespaceStatus,
-        existing_status: Option<&akd_watch_common::NamespaceStatus>
-    ) -> (akd_watch_common::NamespaceStatus, bool) {
-        use akd_watch_common::NamespaceStatus as CommonNamespaceStatus;
-        
+        existing_status: Option<&NamespaceStatus>
+    ) -> (NamespaceStatus, bool) {       
         let desired_status = match config_status {
-            ConfigNamespaceStatus::Online => CommonNamespaceStatus::Online,
-            ConfigNamespaceStatus::Disabled => CommonNamespaceStatus::Disabled,
+            ConfigNamespaceStatus::Online => NamespaceStatus::Online,
+            ConfigNamespaceStatus::Disabled => NamespaceStatus::Disabled,
         };
         
         match existing_status {
             // New namespace - use config status, no change to report
             None => (desired_status, false),
             // Error states are preserved and never count as changes
-            Some(CommonNamespaceStatus::SignatureLost | CommonNamespaceStatus::SignatureVerificationFailed) => {
+            Some(NamespaceStatus::SignatureLost | NamespaceStatus::SignatureVerificationFailed) => {
                 (existing_status.unwrap().clone(), false)
             }
             // All other states can transition normally
@@ -236,6 +232,8 @@ fn default_sleep_seconds() -> u64 {
 
 #[cfg(test)]
 mod tests {
+    use akd_watch_common::akd_configurations::AkdConfiguration;
+
     use super::*;
     
     #[test]
@@ -255,12 +253,12 @@ mod tests {
         assert!(!status_changed); // New namespace, so no change
         
         // Test with existing namespace info (should preserve existing last_verified_epoch)
-        let existing_info = akd_watch_common::NamespaceInfo {
-            configuration: akd_watch_common::configurations::AkdConfiguration::WhatsAppV1Configuration,
+        let existing_info = NamespaceInfo {
+            configuration: AkdConfiguration::WhatsAppV1Configuration,
             name: "test".to_string(),
             log_directory: "logs/test".to_string(),
             last_verified_epoch: 10u64.into(),
-            status: akd_watch_common::NamespaceStatus::Online,
+            status: NamespaceStatus::Online,
         };
         
         let (namespace_info, status_changed) = namespace_config.to_namespace_info(Some(&existing_info)).unwrap();
@@ -281,7 +279,7 @@ mod tests {
         };
         
         let (namespace_info, _) = whatsapp_config.to_namespace_info(None).unwrap();
-        matches!(namespace_info.configuration, akd_watch_common::configurations::AkdConfiguration::WhatsAppV1Configuration);
+        matches!(namespace_info.configuration, AkdConfiguration::WhatsAppV1Configuration);
         
         let bitwarden_config = NamespaceConfig {
             name: "test".to_string(),
@@ -292,8 +290,8 @@ mod tests {
         };
         
         let (namespace_info, _) = bitwarden_config.to_namespace_info(None).unwrap();
-        matches!(namespace_info.configuration, akd_watch_common::configurations::AkdConfiguration::BitwardenV1Configuration);
-        matches!(namespace_info.status, akd_watch_common::NamespaceStatus::Disabled);
+        matches!(namespace_info.configuration, AkdConfiguration::BitwardenV1Configuration);
+        matches!(namespace_info.status, NamespaceStatus::Disabled);
     }
     
     #[test]
@@ -307,127 +305,126 @@ mod tests {
         };
         
         // Test: Online -> Disabled (should change)
-        let online_existing = akd_watch_common::NamespaceInfo {
-            configuration: akd_watch_common::configurations::AkdConfiguration::WhatsAppV1Configuration,
+        let online_existing = NamespaceInfo {
+            configuration: AkdConfiguration::WhatsAppV1Configuration,
             name: "test".to_string(),
             log_directory: "logs/test".to_string(),
             last_verified_epoch: 5u64.into(),
-            status: akd_watch_common::NamespaceStatus::Online,
+            status: NamespaceStatus::Online,
         };
         
         let (info, changed) = disabled_config.to_namespace_info(Some(&online_existing)).unwrap();
-        assert!(matches!(info.status, akd_watch_common::NamespaceStatus::Disabled));
+        assert!(matches!(info.status, NamespaceStatus::Disabled));
         assert!(changed, "Should detect status change from Online to Disabled");
         
         // Test: Initialization -> Disabled (should change)  
-        let init_existing = akd_watch_common::NamespaceInfo {
-            configuration: akd_watch_common::configurations::AkdConfiguration::WhatsAppV1Configuration,
+        let init_existing = NamespaceInfo {
+            configuration: AkdConfiguration::WhatsAppV1Configuration,
             name: "test".to_string(),
             log_directory: "logs/test".to_string(),
             last_verified_epoch: 5u64.into(),
-            status: akd_watch_common::NamespaceStatus::Initialization,
+            status: NamespaceStatus::Initialization,
         };
         
         let (info, changed) = disabled_config.to_namespace_info(Some(&init_existing)).unwrap();
-        assert!(matches!(info.status, akd_watch_common::NamespaceStatus::Disabled));
+        assert!(matches!(info.status, NamespaceStatus::Disabled));
         assert!(changed, "Should detect status change from Initialization to Disabled");
         
         // Test: SignatureLost -> should NOT change (preserve error state)
-        let error_existing = akd_watch_common::NamespaceInfo {
-            configuration: akd_watch_common::configurations::AkdConfiguration::WhatsAppV1Configuration,
+        let error_existing = NamespaceInfo {
+            configuration: AkdConfiguration::WhatsAppV1Configuration,
             name: "test".to_string(),
             log_directory: "logs/test".to_string(),
             last_verified_epoch: 5u64.into(),
-            status: akd_watch_common::NamespaceStatus::SignatureLost,
+            status: NamespaceStatus::SignatureLost,
         };
         
         let (info, changed) = disabled_config.to_namespace_info(Some(&error_existing)).unwrap();
-        assert!(matches!(info.status, akd_watch_common::NamespaceStatus::SignatureLost));
+        assert!(matches!(info.status, NamespaceStatus::SignatureLost));
         assert!(!changed, "Should NOT change error states");
         
         // Test: SignatureVerificationFailed -> should NOT change (preserve error state)
-        let verification_error_existing = akd_watch_common::NamespaceInfo {
-            configuration: akd_watch_common::configurations::AkdConfiguration::WhatsAppV1Configuration,
+        let verification_error_existing = NamespaceInfo {
+            configuration: AkdConfiguration::WhatsAppV1Configuration,
             name: "test".to_string(),
             log_directory: "logs/test".to_string(),
             last_verified_epoch: 5u64.into(),
-            status: akd_watch_common::NamespaceStatus::SignatureVerificationFailed,
+            status: NamespaceStatus::SignatureVerificationFailed,
         };
         
         let (info, changed) = disabled_config.to_namespace_info(Some(&verification_error_existing)).unwrap();
-        assert!(matches!(info.status, akd_watch_common::NamespaceStatus::SignatureVerificationFailed));
+        assert!(matches!(info.status, NamespaceStatus::SignatureVerificationFailed));
         assert!(!changed, "Should NOT change error states");
     }
     
     #[test]
     fn test_resolve_status_transition() {
-        use akd_watch_common::NamespaceStatus as CommonNamespaceStatus;
         
         // Test new namespace (None existing status)
         let (status, changed) = NamespaceConfig::resolve_status_transition(
             &ConfigNamespaceStatus::Online, 
             None
         );
-        assert!(matches!(status, CommonNamespaceStatus::Online));
+        assert!(matches!(status, NamespaceStatus::Online));
         assert!(!changed, "New namespace should not count as changed");
         
         let (status, changed) = NamespaceConfig::resolve_status_transition(
             &ConfigNamespaceStatus::Disabled, 
             None
         );
-        assert!(matches!(status, CommonNamespaceStatus::Disabled));
+        assert!(matches!(status, NamespaceStatus::Disabled));
         assert!(!changed, "New namespace should not count as changed");
         
         // Test error states are preserved
         let (status, changed) = NamespaceConfig::resolve_status_transition(
             &ConfigNamespaceStatus::Online,
-            Some(&CommonNamespaceStatus::SignatureLost)
+            Some(&NamespaceStatus::SignatureLost)
         );
-        assert!(matches!(status, CommonNamespaceStatus::SignatureLost));
+        assert!(matches!(status, NamespaceStatus::SignatureLost));
         assert!(!changed, "Error states should never be changed");
         
         let (status, changed) = NamespaceConfig::resolve_status_transition(
             &ConfigNamespaceStatus::Disabled,
-            Some(&CommonNamespaceStatus::SignatureVerificationFailed)
+            Some(&NamespaceStatus::SignatureVerificationFailed)
         );
-        assert!(matches!(status, CommonNamespaceStatus::SignatureVerificationFailed));
+        assert!(matches!(status, NamespaceStatus::SignatureVerificationFailed));
         assert!(!changed, "Error states should never be changed");
         
         // Test normal status transitions
         let (status, changed) = NamespaceConfig::resolve_status_transition(
             &ConfigNamespaceStatus::Disabled,
-            Some(&CommonNamespaceStatus::Online)
+            Some(&NamespaceStatus::Online)
         );
-        assert!(matches!(status, CommonNamespaceStatus::Disabled));
+        assert!(matches!(status, NamespaceStatus::Disabled));
         assert!(changed, "Online -> Disabled should be detected as change");
         
         let (status, changed) = NamespaceConfig::resolve_status_transition(
             &ConfigNamespaceStatus::Online,
-            Some(&CommonNamespaceStatus::Disabled)
+            Some(&NamespaceStatus::Disabled)
         );
-        assert!(matches!(status, CommonNamespaceStatus::Online));
+        assert!(matches!(status, NamespaceStatus::Online));
         assert!(changed, "Disabled -> Online should be detected as change");
         
         let (status, changed) = NamespaceConfig::resolve_status_transition(
             &ConfigNamespaceStatus::Disabled,
-            Some(&CommonNamespaceStatus::Initialization)
+            Some(&NamespaceStatus::Initialization)
         );
-        assert!(matches!(status, CommonNamespaceStatus::Disabled));
+        assert!(matches!(status, NamespaceStatus::Disabled));
         assert!(changed, "Initialization -> Disabled should be detected as change");
         
         // Test no change scenarios
         let (status, changed) = NamespaceConfig::resolve_status_transition(
             &ConfigNamespaceStatus::Online,
-            Some(&CommonNamespaceStatus::Online)
+            Some(&NamespaceStatus::Online)
         );
-        assert!(matches!(status, CommonNamespaceStatus::Online));
+        assert!(matches!(status, NamespaceStatus::Online));
         assert!(!changed, "Online -> Online should not be detected as change");
         
         let (status, changed) = NamespaceConfig::resolve_status_transition(
             &ConfigNamespaceStatus::Disabled,
-            Some(&CommonNamespaceStatus::Disabled)
+            Some(&NamespaceStatus::Disabled)
         );
-        assert!(matches!(status, CommonNamespaceStatus::Disabled));
+        assert!(matches!(status, NamespaceStatus::Disabled));
         assert!(!changed, "Disabled -> Disabled should not be detected as change");
     }
     

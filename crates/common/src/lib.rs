@@ -5,11 +5,11 @@ mod error;
 mod epoch_signature;
 pub mod crypto;
 pub mod storage;
-pub mod configurations;
+pub mod akd_configurations;
 
 pub use audit_blob_name::SerializableAuditBlobName;
 pub use namespace_info::*;
 pub use versions::*;
 pub use error::AkdWatchError;
 pub use epoch_signature::EpochSignature;
-pub use configurations::BitwardenV1Configuration;
+pub use akd_configurations::BitwardenV1Configuration;

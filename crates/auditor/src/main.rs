@@ -10,7 +10,7 @@ use tracing_subscriber;
 
 use akd_watch_common::{
      EpochSignature, NamespaceInfo,
-    configurations::verify_consecutive_append_only,
+    akd_configurations::verify_consecutive_append_only,
     crypto::SigningKey,
     storage::{
         AkdStorage, InMemoryStorage, SignatureStorage,

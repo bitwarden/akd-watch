@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{configurations::AkdConfiguration, storage::{whatsapp_akd_storage::WhatsAppAkdStorage, AkdStorage}, Epoch};
+use crate::{akd_configurations::AkdConfiguration, storage::{whatsapp_akd_storage::WhatsAppAkdStorage, AkdStorage}, Epoch};
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum NamespaceStatus {
