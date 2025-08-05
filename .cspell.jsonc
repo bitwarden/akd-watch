@@ -10,6 +10,7 @@
     "Ciphersuite",
     "clippy",
     "Deque",
+    "interruptible",
     "repr",
     "serde"
   ],
