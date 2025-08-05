@@ -48,6 +48,7 @@ connection_string = "your_connection_string"  # Optional in config file
 
 The signing key configuration:
 - `key_file`: Path to signing key file (required) - will store current and past keys for rotation support
+- `key_lifetime_seconds`: Lifetime of the signing key in seconds (defaults to 30 days)
 
 ### Namespace Configuration
 

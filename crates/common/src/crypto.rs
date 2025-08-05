@@ -1,3 +1,4 @@
+use chrono::{DateTime, Duration, Utc};
 use rand::Rng;
 use std::sync::{Arc, RwLock};
 
@@ -9,6 +10,7 @@ use crate::AkdWatchError;
 pub struct SigningKey {
     signing_key: Arc<RwLock<ed25519_dalek::SigningKey>>,
     key_id: Uuid,
+    not_after_date: DateTime<Utc>,
 }
 
 impl SigningKey {
@@ -20,14 +22,15 @@ impl SigningKey {
         Arc::clone(&self.signing_key)
     }
 
-    pub fn new(signing_key: ed25519_dalek::SigningKey, key_id: Uuid) -> Self {
+    pub fn new(signing_key: ed25519_dalek::SigningKey, key_id: Uuid, not_after_date: DateTime<Utc>) -> Self {
         Self {
             signing_key: Arc::new(RwLock::new(signing_key)),
             key_id,
+            not_after_date,
         }
     }
 
-    pub fn generate() -> Self {
+    pub fn generate(lifetime: Duration) -> Self {
         let mut secret_key = [0u8; 32];
         rand::rng().fill(&mut secret_key);
         let signing_key = ed25519_dalek::SigningKey::from_bytes(&secret_key);
@@ -35,6 +38,7 @@ impl SigningKey {
         Self {
             signing_key: Arc::new(RwLock::new(signing_key)),
             key_id,
+            not_after_date: Utc::now() + lifetime,
         }
     }
     pub fn verifying_key(&self) -> Result<VerifyingKey, AkdWatchError> {
@@ -45,11 +49,14 @@ impl SigningKey {
                 .map_err(|_| AkdWatchError::PoisonedSigningKey)?
                 .verifying_key(),
             key_id: self.key_id,
+            not_after_date: self.not_after_date,
         })
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct VerifyingKey {
     pub verifying_key: ed25519_dalek::VerifyingKey,
     pub key_id: Uuid,
+    pub not_after_date: DateTime<Utc>,
 }

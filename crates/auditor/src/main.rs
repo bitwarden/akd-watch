@@ -49,7 +49,7 @@ async fn main() -> Result<()> {
     // - Store key_id next to keys in the keyfile
     // - Support key rotation with current and past keys stored in the keyfile
     // - Add config for key lifetime and forced rotation
-    let signing_key = SigningKey::generate();
+    let signing_key = SigningKey::generate(chrono::Duration::seconds(config.signing.key_lifetime_seconds));
 
     for namespace in infos {
         let signing_key = signing_key.clone();

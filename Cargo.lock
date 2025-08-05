@@ -88,6 +88,7 @@ dependencies = [
  "anyhow",
  "azure_storage",
  "azure_storage_blobs",
+ "chrono",
  "config",
  "ed25519-dalek",
  "futures-util",
@@ -488,6 +489,7 @@ dependencies = [
  "iana-time-zone",
  "js-sys",
  "num-traits",
+ "serde",
  "wasm-bindgen",
  "windows-link",
 ]

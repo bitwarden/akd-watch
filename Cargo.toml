@@ -14,6 +14,7 @@ akd_watch_auditor = { path = "crates/auditor" }
 akd_watch_watcher = { path = "crates/watcher" }
 akd_watch_web = { path = "crates/web" }
 akd_watch_common = { path = "crates/common" }
+chrono = { version = "0.4.41", features = ["serde"] }
 config = "0.14"
 tracing = "0.1.41"
 tracing-subscriber = "0.3.19"

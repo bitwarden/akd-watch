@@ -3,6 +3,10 @@ use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use akd_watch_common::{akd_configurations::AkdConfiguration, NamespaceInfo, NamespaceStatus};
 
+const DEFAULT_SLEEP_SECONDS: u64 = 30; // Default to 30 seconds
+const DEFAULT_KEY_LIFETIME_SECONDS: i64 = 60 * 60 * 24 * 30; // Default to 30 days
+
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum AkdConfigurationType {
     WhatsAppV1,
@@ -53,6 +57,8 @@ pub struct NamespaceConfig {
 pub struct SigningConfig {
     /// Path to the signing key file
     pub key_file: String,
+    #[serde(default = "default_key_lifetime_seconds")]
+    pub key_lifetime_seconds: i64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -227,7 +233,11 @@ impl NamespaceConfig {
 
 // Default values for serde defaults
 fn default_sleep_seconds() -> u64 {
-    30
+    DEFAULT_SLEEP_SECONDS
+}
+
+fn default_key_lifetime_seconds() -> i64 {
+    DEFAULT_KEY_LIFETIME_SECONDS
 }
 
 #[cfg(test)]
