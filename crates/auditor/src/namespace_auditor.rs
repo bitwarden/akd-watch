@@ -111,20 +111,16 @@ where
     }
 
     /// Perform one complete audit cycle
-    async fn run_audit_cycle(&self) -> Result<usize> {
+    async fn run_audit_cycle(&mut self) -> Result<usize> {
         // Refresh namespace info from repository
         let namespace_info = self.get_fresh_namespace_info().await?;
-        let mut namespace = Namespace {
-            info: namespace_info,
-            signature_storage: self.signature_storage.clone(),
-        };
 
         // Poll for new epochs
-        let blob_names = poll_for_new_epochs(namespace.clone()).await?;
+        let blob_names = self.poll_for_new_epochs(&namespace_info).await?;
         
         if !blob_names.is_empty() {
             trace!(
-                namespace = namespace.info.name,
+                namespace = namespace_info.name,
                 blob_names = blob_names
                     .iter()
                     .map(|n| n.to_string())
@@ -136,13 +132,9 @@ where
 
         // Process each audit request
         for blob_name in &blob_names {
-            if let Err(e) = process_audit_request(
-                blob_name,
-                &mut namespace,
-                &*self.signing_key_repository,
-            ).await {
+            if let Err(e) = self.process_audit_request(blob_name, &namespace_info).await {
                 warn!(
-                    namespace = namespace.info.name,
+                    namespace = namespace_info.name,
                     epoch = blob_name.epoch,
                     blob_name = blob_name.to_string(),
                     error = %e,
@@ -156,12 +148,12 @@ where
                 return Err(anyhow::anyhow!(
                     "Audit failed for epoch {} in namespace {}: {}", 
                     blob_name.epoch, 
-                    namespace.info.name,
+                    namespace_info.name,
                     e
                 ));
             } else {
                 info!(
-                    namespace = namespace.info.name,
+                    namespace = namespace_info.name,
                     epoch = blob_name.epoch,
                     blob_name = blob_name.to_string(),
                     "Successfully processed audit request"
@@ -181,120 +173,108 @@ where
                 anyhow::anyhow!("Namespace {} not found in repository", self.namespace_info.name)
             })
     }
-}
 
-#[derive(Clone, Debug)]
-pub struct Namespace<S: SignatureStorage> {
-    pub info: NamespaceInfo,
-    pub signature_storage: S,
-}
+    /// Polls the AKD for a list of unaudited epochs and returns a list of `AuditRequest`s.
+    #[instrument(level = "info", skip_all, fields(namespace = namespace_info.name))]
+    async fn poll_for_new_epochs(&self, namespace_info: &NamespaceInfo) -> Result<Vec<SerializableAuditBlobName>> {
+        let akd = namespace_info.akd_storage();
 
-/// Polls the AKD for a list of unaudited epochs and returns a list of `AuditRequest`s.
-#[instrument(level = "info", skip_all, fields(namespace = namespace.info.name))]
-pub async fn poll_for_new_epochs<S: SignatureStorage>(
-    namespace: Namespace<S>,
-) -> Result<Vec<SerializableAuditBlobName>> {
-    let akd = namespace.info.akd_storage();
-    let signatures = namespace.signature_storage;
+        // get the next epoch to audit
+        let mut next_epoch = self.signature_storage.latest_signed_epoch().await + 1;
 
-    // get the next epoch to audit
-    let mut next_epoch = signatures.latest_signed_epoch().await + 1;
+        // Check if the namespace has a proof for the next epoch
+        let mut result = Vec::new();
+        loop {
+            if akd.has_proof(next_epoch).await {
+                info!(akd = %akd, epoch = next_epoch, "AKD has published a new proof");
 
-    // Check if the namespace has a proof for the next epoch
-    let mut result = Vec::new();
-    loop {
-        if akd.has_proof(next_epoch).await {
-            info!(akd = %akd, epoch = next_epoch, "AKD has published a new proof");
-
-            if let Ok(proof_name) = akd.get_proof_name(next_epoch).await {
-                // Add the proof name to the queue
-                info!(akd = %akd, epoch = next_epoch, proof_name = proof_name.to_string(), "Retrieved proof name");
-                result.push(proof_name.into());
-                // increment the epoch and continue to check for the next one
-                next_epoch += 1;
-                continue;
+                if let Ok(proof_name) = akd.get_proof_name(next_epoch).await {
+                    // Add the proof name to the queue
+                    info!(akd = %akd, epoch = next_epoch, proof_name = proof_name.to_string(), "Retrieved proof name");
+                    result.push(proof_name.into());
+                    // increment the epoch and continue to check for the next one
+                    next_epoch += 1;
+                    continue;
+                } else {
+                    warn!(akd = %akd, epoch = next_epoch, "Failed to retrieve proof name for epoch");
+                    break;
+                }
             } else {
-                warn!(akd = %akd, epoch = next_epoch, "Failed to retrieve proof name for epoch");
+                trace!(akd = %akd, epoch = next_epoch, "AKD has not published a proof for this epoch, yet");
                 break;
             }
-        } else {
-            trace!(akd = %akd, epoch = next_epoch, "AKD has not published a proof for this epoch, yet");
-            break;
         }
+
+        Ok(result)
     }
 
-    Ok(result)
-}
+    /// Downloads the audit proof for the given `AuditRequest`, verifies it, and stores the signature if successful.
+    #[instrument(level = "info", skip_all, fields(namespace = namespace_info.name, blob_name = blob_name.to_string()))]
+    async fn process_audit_request(
+        &mut self,
+        blob_name: &SerializableAuditBlobName,
+        namespace_info: &NamespaceInfo,
+    ) -> Result<()> {
+        // if we've signed this epoch, skip it
+        // TODO: verify this signature. if it's not valid, throw an error
+        if self.signature_storage
+            .get_signature(&blob_name.epoch)
+            .await
+            .is_some()
+        {
+            return Ok(());
+        }
 
-/// Downloads the audit proof for the given `AuditRequest`, verifies it, and stores the signature if successful.
-#[instrument(level = "info", skip_all, fields(namespace = namespace.info.name, blob_name = blob_name.to_string()))]
-pub async fn process_audit_request<S: SigningKeyRepository>(
-    blob_name: &SerializableAuditBlobName,
-    namespace: &mut Namespace<impl SignatureStorage>,
-    signing_key_repository: &S,
-) -> Result<()> {
-    // if we've signed this epoch, skip it
-    // TODO: verify this signature. if it's not valid, throw an error
-    if namespace
-        .signature_storage
-        .get_signature(&blob_name.epoch)
-        .await
-        .is_some()
-    {
-        return Ok(());
-    }
+        // download the blob
+        let audit_blob = namespace_info
+            .akd_storage()
+            .get_proof(&blob_name.into())
+            .await?;
+        trace!(
+            namespace = namespace_info.name,
+            blob_name = blob_name.to_string(),
+            "Downloaded audit blob"
+        );
 
-    // download the blob
-    let audit_blob = namespace
-        .info
-        .akd_storage()
-        .get_proof(&blob_name.into())
+        // decode the blob
+        // TODO: do not use previous_hash, download the previous signature, verify it, and if it's missing or unverified, throw an error
+        let (end_epoch, previous_hash, end_hash, proof) = audit_blob
+            .decode()
+            .map_err(|e| anyhow::anyhow!("Failed to decode audit blob: {:?}", e))?;
+
+        // verify the proof
+        verify_consecutive_append_only(
+            &namespace_info.configuration,
+            &proof,
+            previous_hash,
+            end_hash,
+            end_epoch,
+        )
         .await?;
-    trace!(
-        namespace = namespace.info.name,
-        blob_name = blob_name.to_string(),
-        "Downloaded audit blob"
-    );
+        trace!(namespace = namespace_info.name, end_epoch, previous_hash = ?previous_hash, end_hash = ?end_hash, "Verified audit proof");
 
-    // decode the blob
-    // TODO: do not use previous_hash, download the previous signature, verify it, and if it's missing or unverified, throw an error
-    let (end_epoch, previous_hash, end_hash, proof) = audit_blob
-        .decode()
-        .map_err(|e| anyhow::anyhow!("Failed to decode audit blob: {:?}", e))?;
+        // sign the proof
+        let current_signing_key = self.signing_key_repository.get_current_signing_key().await;
+        let signature = EpochSignature::sign(
+            namespace_info.clone(),
+            end_epoch.into(),
+            end_hash,
+            &current_signing_key,
+        )?;
+        trace!(
+            namespace = namespace_info.name,
+            end_epoch, "Signed audit proof"
+        );
 
-    // verify the proof
-    verify_consecutive_append_only(
-        &namespace.info.configuration,
-        &proof,
-        previous_hash,
-        end_hash,
-        end_epoch,
-    )
-    .await?;
-    trace!(namespace = namespace.info.name, end_epoch, previous_hash = ?previous_hash, end_hash = ?end_hash, "Verified audit proof");
+        // store the signature
+        self.signature_storage
+            .set_signature(end_epoch, signature)
+            .await;
+        trace!(
+            namespace = namespace_info.name,
+            end_epoch, "Stored signature for audit proof"
+        );
 
-    // sign the proof
-    let current_signing_key = signing_key_repository.get_current_signing_key().await;
-    let signature = EpochSignature::sign(
-        namespace.info.clone(),
-        end_epoch.into(),
-        end_hash,
-        &current_signing_key,
-    )?;
-    trace!(
-        namespace = namespace.info.name,
-        end_epoch, "Signed audit proof"
-    );
-
-    // store the signature
-    namespace
-        .signature_storage
-        .set_signature(end_epoch, signature)
-        .await;
-    trace!(
-        namespace = namespace.info.name,
-        end_epoch, "Stored signature for audit proof"
-    );
-
-    Ok(())
+        Ok(())
+    }
 }
