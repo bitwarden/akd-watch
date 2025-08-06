@@ -57,7 +57,7 @@ where
 {
 
     /// Run the auditor application
-    pub async fn run(self) -> Result<()> {
+    pub async fn run(&self) -> Result<()> {
         // Get all namespaces from the repository
         let namespace_infos = self.namespace_repository
             .list_namespaces()
@@ -96,39 +96,15 @@ where
 
         info!("Started {} namespace auditors", handles.len());
 
-        // Handle graceful shutdown with signal handling
-        let ctrl_c_future = tokio::signal::ctrl_c();
-        let join_all_future = future::join_all(handles);
-        
-        tokio::pin!(ctrl_c_future);
-        tokio::pin!(join_all_future);
-
-        tokio::select! {
-            _ = &mut ctrl_c_future => {
-                info!("Received Ctrl+C, initiating shutdown");
-                if let Err(e) = self.shutdown() {
-                    warn!(error = %e, "Error during shutdown");
-                }
-                info!("Waiting for all auditors to complete...");
-                // Wait for all handles to complete gracefully
-                let results = join_all_future.await;
-                for result in results {
-                    if let Err(e) = result {
-                        warn!(error = %e, "Auditor task panicked during shutdown");
-                    }
-                }
-                info!("All auditors have completed");
-            }
-            results = &mut join_all_future => {
-                for result in results {
-                    if let Err(e) = result {
-                        warn!(error = %e, "Auditor task panicked");
-                    }
-                }
-                info!("All auditors completed naturally");
+        // Wait for all auditors to complete
+        let results = future::join_all(handles).await;
+        for result in results {
+            if let Err(e) = result {
+                warn!(error = %e, "Auditor task completed with error");
             }
         }
 
+        info!("All auditors completed");
         Ok(())
     }
 
