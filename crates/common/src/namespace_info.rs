@@ -20,6 +20,7 @@ pub struct NamespaceInfo {
     pub name: String,
     pub log_directory: String,
     pub last_verified_epoch: Epoch,
+    pub starting_epoch: Epoch,
     pub status: NamespaceStatus,
 }
 

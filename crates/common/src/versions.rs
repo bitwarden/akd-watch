@@ -78,6 +78,10 @@ impl Epoch {
     pub fn new(epoch: u64) -> Self {
         Epoch(epoch)
     }
+    
+    pub fn value(&self) -> u64 {
+        self.0
+    }
 }
 
 impl From<u64> for Epoch {

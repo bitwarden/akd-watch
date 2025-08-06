@@ -10,6 +10,7 @@ pub async fn handle_query_namespace(
         name: namespace.clone(),
         log_directory: format!("Namespace: {}", namespace),
         last_verified_epoch: Epoch::new(42),
+        starting_epoch: Epoch::new(1),
         status: NamespaceStatus::Online,
     }.into())
 }

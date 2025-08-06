@@ -192,11 +192,15 @@ impl NamespaceConfig {
             .map(|info| info.last_verified_epoch)
             .unwrap_or_else(|| self.starting_epoch.into());
         
+        // Always use the starting_epoch from config (may have been updated)
+        let starting_epoch = self.starting_epoch.into();
+        
         let namespace_info = NamespaceInfo {
             configuration,
             name: self.name.clone(),
             log_directory: self.log_directory.clone(),
             last_verified_epoch,
+            starting_epoch,
             status,
         };
         
@@ -268,6 +272,7 @@ mod tests {
             name: "test".to_string(),
             log_directory: "logs/test".to_string(),
             last_verified_epoch: 10u64.into(),
+            starting_epoch: 5u64.into(),
             status: NamespaceStatus::Online,
         };
         
@@ -320,6 +325,7 @@ mod tests {
             name: "test".to_string(),
             log_directory: "logs/test".to_string(),
             last_verified_epoch: 5u64.into(),
+            starting_epoch: 1u64.into(),
             status: NamespaceStatus::Online,
         };
         
@@ -333,6 +339,7 @@ mod tests {
             name: "test".to_string(),
             log_directory: "logs/test".to_string(),
             last_verified_epoch: 5u64.into(),
+            starting_epoch: 1u64.into(),
             status: NamespaceStatus::Initialization,
         };
         
@@ -346,6 +353,7 @@ mod tests {
             name: "test".to_string(),
             log_directory: "logs/test".to_string(),
             last_verified_epoch: 5u64.into(),
+            starting_epoch: 1u64.into(),
             status: NamespaceStatus::SignatureLost,
         };
         
@@ -359,6 +367,7 @@ mod tests {
             name: "test".to_string(),
             log_directory: "logs/test".to_string(),
             last_verified_epoch: 5u64.into(),
+            starting_epoch: 1u64.into(),
             status: NamespaceStatus::SignatureVerificationFailed,
         };
         

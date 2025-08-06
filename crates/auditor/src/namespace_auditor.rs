@@ -235,6 +235,17 @@ where
         blob_name: &SerializableAuditBlobName,
         namespace_info: &NamespaceInfo,
     ) -> Result<()> {
+        // Skip epochs before the starting epoch
+        if blob_name.epoch < namespace_info.starting_epoch.value() {
+            trace!(
+                namespace = namespace_info.name,
+                epoch = blob_name.epoch,
+                starting_epoch = namespace_info.starting_epoch.value(),
+                "Skipping epoch before starting epoch"
+            );
+            return Ok(());
+        }
+
         // Check if we've already signed this epoch and verify the existing signature if present
         if let Some(_existing_signature) = self.get_and_verify_signature(blob_name.epoch).await? {
             trace!(
@@ -257,15 +268,15 @@ where
         );
 
         // decode the blob
-        let (end_epoch, _ignored_previous_hash, end_hash, proof) = audit_blob
+        let (end_epoch, previous_hash_from_blob, end_hash, proof) = audit_blob
             .decode()
             .map_err(|e| anyhow::anyhow!("Failed to decode audit blob: {:?}", e))?;
 
         // Get and verify the previous epoch's signature to establish the chain
-        let previous_hash = if blob_name.epoch == 1 {
-            // For epoch 1, use a zero hash as there's no previous epoch
-            // TODO: this should just use the previous hash from the proof itself, and should probably match on the configured starting epoch for this namespace
-            [0u8; 32]
+        let previous_hash = if blob_name.epoch == namespace_info.starting_epoch.value() {
+            // For the starting epoch, use the previous hash from the audit blob itself
+            // as we trust this to be the initial state
+            previous_hash_from_blob
         } else {
             let previous_epoch = blob_name.epoch - 1;
             
