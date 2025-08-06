@@ -174,6 +174,26 @@ where
             })
     }
 
+    /// Retrieves and verifies an existing signature for the given epoch
+    /// Returns Ok(Some(signature)) if found and valid, Ok(None) if not found, or Err if found but invalid
+    async fn get_and_verify_signature(&self, epoch: u64) -> Result<Option<EpochSignature>> {
+        if let Some(signature) = self.signature_storage.get_signature(&epoch).await {
+            // Verify the signature
+            let verifying_repo = self.signing_key_repository.verifying_key_repository();
+            signature.verify(&verifying_repo).await.map_err(|e| {
+                anyhow::anyhow!(
+                    "Signature verification failed for epoch {}: {}",
+                    epoch,
+                    e
+                )
+            })?;
+            
+            Ok(Some(signature))
+        } else {
+            Ok(None)
+        }
+    }
+
     /// Polls the AKD for a list of unaudited epochs and returns a list of `AuditRequest`s.
     #[instrument(level = "info", skip_all, fields(namespace = namespace_info.name))]
     async fn poll_for_new_epochs(&self, namespace_info: &NamespaceInfo) -> Result<Vec<SerializableAuditBlobName>> {
@@ -215,13 +235,13 @@ where
         blob_name: &SerializableAuditBlobName,
         namespace_info: &NamespaceInfo,
     ) -> Result<()> {
-        // if we've signed this epoch, skip it
-        // TODO: verify this signature. if it's not valid, throw an error
-        if self.signature_storage
-            .get_signature(&blob_name.epoch)
-            .await
-            .is_some()
-        {
+        // Check if we've already signed this epoch and verify the existing signature if present
+        if let Some(_existing_signature) = self.get_and_verify_signature(blob_name.epoch).await? {
+            trace!(
+                namespace = namespace_info.name,
+                epoch = blob_name.epoch,
+                "Existing signature verified, skipping"
+            );
             return Ok(());
         }
 
@@ -237,12 +257,39 @@ where
         );
 
         // decode the blob
-        // TODO: do not use previous_hash, download the previous signature, verify it, and if it's missing or unverified, throw an error
-        let (end_epoch, previous_hash, end_hash, proof) = audit_blob
+        let (end_epoch, _ignored_previous_hash, end_hash, proof) = audit_blob
             .decode()
             .map_err(|e| anyhow::anyhow!("Failed to decode audit blob: {:?}", e))?;
 
-        // verify the proof
+        // Get and verify the previous epoch's signature to establish the chain
+        let previous_hash = if blob_name.epoch == 1 {
+            // For epoch 1, use a zero hash as there's no previous epoch
+            // TODO: this should just use the previous hash from the proof itself, and should probably match on the configured starting epoch for this namespace
+            [0u8; 32]
+        } else {
+            let previous_epoch = blob_name.epoch - 1;
+            
+            // Get the previous epoch's signature
+            let previous_signature = self.get_and_verify_signature(previous_epoch).await?
+                .ok_or_else(|| {
+                    anyhow::anyhow!(
+                        "Previous epoch {} signature not found when auditing epoch {}",
+                        previous_epoch,
+                        blob_name.epoch
+                    )
+                })?;
+
+            trace!(
+                namespace = namespace_info.name,
+                previous_epoch,
+                "Previous epoch signature verified"
+            );
+
+            // Use the hash from the verified previous signature
+            previous_signature.epoch_root_hash()?
+        };
+
+        // verify the proof using the chained previous hash
         verify_consecutive_append_only(
             &namespace_info.configuration,
             &proof,

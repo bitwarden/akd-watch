@@ -3,7 +3,7 @@ use ed25519_dalek::Verifier;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::{crypto::{SigningKey, VerifyingKey}, AkdWatchError, Ciphersuite, Epoch, NamespaceInfo};
+use crate::{crypto::{SigningKey, VerifyingKey}, storage::signing_key_repository::VerifyingKeyRepository, AkdWatchError, Ciphersuite, Epoch, NamespaceInfo};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "audit_version")]
@@ -113,6 +113,24 @@ impl EpochSignature {
                 .as_slice()
                 .try_into()
                 .map_err(|_| AkdWatchError::EpochRootHashParseError(signature.digest.clone())),
+        }
+    }
+
+    pub fn signing_key_id(&self) -> Uuid {
+        match self {
+            EpochSignature::V1(signature) => signature.key_id,
+        }
+    }
+
+    pub async fn verify(&self, verifying_key_repo: &impl VerifyingKeyRepository) -> Result<(), AkdWatchError> {
+        let signing_key_id = self.signing_key_id();
+        let verifying_key = verifying_key_repo
+            .get_verifying_key(signing_key_id)
+            .await
+            .ok_or_else(|| AkdWatchError::VerifyingKeyNotFound(signing_key_id))?;
+        
+        match self {
+            EpochSignature::V1(signature) => signature.verify(&verifying_key),
         }
     }
 }

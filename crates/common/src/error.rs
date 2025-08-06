@@ -1,4 +1,5 @@
 use thiserror::Error;
+use uuid::Uuid;
 
 use crate::Ciphersuite;
 
@@ -25,6 +26,8 @@ pub enum AkdWatchError {
     SignatureVerificationFailed,
     #[error("poisoned signing key")]
     PoisonedSigningKey,
+    #[error("Verifying key not found: {0}")]
+    VerifyingKeyNotFound(Uuid),
 }
 
 impl From<akd::local_auditing::LocalAuditorError> for AkdWatchError {
