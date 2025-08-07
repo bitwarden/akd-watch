@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{akd_configurations::AkdConfiguration, storage::{whatsapp_akd_storage::WhatsAppAkdStorage, AkdStorage}, Epoch};
+use crate::{akd_configurations::AkdConfiguration, Epoch};
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum NamespaceStatus {
@@ -22,13 +22,4 @@ pub struct NamespaceInfo {
     pub last_verified_epoch: Epoch,
     pub starting_epoch: Epoch,
     pub status: NamespaceStatus,
-}
-
-impl NamespaceInfo {
-    pub fn akd_storage(&self) -> impl AkdStorage{
-        match &self.configuration {
-            AkdConfiguration::WhatsAppV1Configuration => WhatsAppAkdStorage::new(),
-            _ => todo!("Unsupported configuration: {:?}", self.configuration),
-        }
-    }
 }

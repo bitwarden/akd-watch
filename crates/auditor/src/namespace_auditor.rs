@@ -4,6 +4,7 @@ use std::time::Duration;
 use akd_watch_common::{
     SerializableAuditBlobName, EpochSignature, NamespaceInfo,
     akd_configurations::verify_consecutive_append_only,
+    akd_storage_factory::AkdStorageFactory,
     storage::{
         AkdStorage,
         namespace_repository::NamespaceRepository,
@@ -197,7 +198,7 @@ where
     /// Polls the AKD for a list of unaudited epochs and returns a list of `AuditRequest`s.
     #[instrument(level = "info", skip_all, fields(namespace = namespace_info.name))]
     async fn poll_for_new_epochs(&self, namespace_info: &NamespaceInfo) -> Result<Vec<SerializableAuditBlobName>> {
-        let akd = namespace_info.akd_storage();
+        let akd = AkdStorageFactory::create_storage(&namespace_info.configuration);
 
         // get the next epoch to audit
         let mut next_epoch = self.signature_storage.latest_signed_epoch().await + 1;
@@ -257,8 +258,7 @@ where
         }
 
         // download the blob
-        let audit_blob = namespace_info
-            .akd_storage()
+        let audit_blob = AkdStorageFactory::create_storage(&namespace_info.configuration)
             .get_proof(&blob_name.into())
             .await?;
         trace!(
