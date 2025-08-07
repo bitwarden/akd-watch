@@ -15,7 +15,6 @@ impl InMemoryStorage {
     }
 }
 
-#[async_trait::async_trait]
 impl SignatureStorage for InMemoryStorage {
     async fn has_signature(&self, epoch: &u64) -> bool {
         let signatures = self.signatures.read().unwrap();
