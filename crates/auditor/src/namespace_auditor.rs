@@ -13,7 +13,7 @@ use akd_watch_common::{
     },
 };
 use anyhow::Result;
-use tokio::sync::broadcast;
+use tokio::sync::broadcast::{Receiver};
 use tracing::{info, instrument, trace, warn};
 
 /// Service responsible for auditing a single namespace
@@ -23,7 +23,7 @@ pub struct NamespaceAuditor<NR, SKR, SS> {
     signing_key_repository: Arc<SKR>,
     signature_storage: SS,
     sleep_duration: Duration,
-    shutdown_rx: broadcast::Receiver<()>,
+    shutdown_rx: Receiver<()>,
 }
 
 impl<NR, SKR, SS> NamespaceAuditor<NR, SKR, SS>
@@ -38,7 +38,7 @@ where
         signing_key_repository: Arc<SKR>,
         signature_storage: SS,
         sleep_duration: Duration,
-        shutdown_rx: broadcast::Receiver<()>,
+        shutdown_rx: Receiver<()>,
     ) -> Self {
         Self {
             namespace_info,
@@ -99,14 +99,14 @@ where
     /// Sleep for the configured duration, but wake up immediately if shutdown is signaled
     /// Returns true if shutdown was received, false if sleep completed normally
     async fn interruptible_sleep(&mut self) -> bool {
-        tokio::select! {
-            _ = tokio::time::sleep(self.sleep_duration) => {
-                // Sleep completed normally
-                false
-            }
-            _ = self.shutdown_rx.recv() => {
+        match interruptible_sleep(self.sleep_duration, &mut self.shutdown_rx).await {
+            true => {
                 info!(namespace = self.namespace_info.name, "Received shutdown signal during sleep");
-                true
+                true // Signal shutdown
+            }
+            false => {
+                trace!(namespace = self.namespace_info.name, "Sleep completed normally");
+                false // Sleep completed without shutdown
             }
         }
     }
@@ -175,26 +175,6 @@ where
             })
     }
 
-    /// Retrieves and verifies an existing signature for the given epoch
-    /// Returns Ok(Some(signature)) if found and valid, Ok(None) if not found, or Err if found but invalid
-    async fn get_and_verify_signature(&self, epoch: u64) -> Result<Option<EpochSignature>> {
-        if let Some(signature) = self.signature_storage.get_signature(&epoch).await {
-            // Verify the signature
-            let verifying_repo = self.signing_key_repository.verifying_key_repository();
-            signature.verify(&verifying_repo).await.map_err(|e| {
-                anyhow::anyhow!(
-                    "Signature verification failed for epoch {}: {}",
-                    epoch,
-                    e
-                )
-            })?;
-            
-            Ok(Some(signature))
-        } else {
-            Ok(None)
-        }
-    }
-
     /// Polls the AKD for a list of unaudited epochs and returns a list of `AuditRequest`s.
     #[instrument(level = "info", skip_all, fields(namespace = namespace_info.name))]
     async fn poll_for_new_epochs(&self, namespace_info: &NamespaceInfo) -> Result<Vec<SerializableAuditBlobName>> {
@@ -257,6 +237,36 @@ where
             return Ok(());
         }
 
+        // Verify the blob
+        let _verified = self.verify_blob(blob_name, namespace_info).await?;
+
+        // sign the proof
+        let _signed = self.sign_blob(blob_name, namespace_info).await?;
+
+        Ok(())
+    }
+
+    /// Retrieves and verifies an existing signature for the given epoch
+    /// Returns Ok(Some(signature)) if found and valid, Ok(None) if not found, or Err if found but invalid
+    async fn get_and_verify_signature(&self, epoch: u64) -> Result<Option<EpochSignature>> {
+        if let Some(signature) = self.signature_storage.get_signature(&epoch).await {
+            // Verify the signature
+            let verifying_repo = self.signing_key_repository.verifying_key_repository();
+            signature.verify(&verifying_repo).await.map_err(|e| {
+                anyhow::anyhow!(
+                    "Signature verification failed for epoch {}: {}",
+                    epoch,
+                    e
+                )
+            })?;
+            
+            Ok(Some(signature))
+        } else {
+            Ok(None)
+        }
+    }
+
+    async fn verify_blob(&self, blob_name: &SerializableAuditBlobName, namespace_info: &NamespaceInfo) -> Result<()> {
         // download the blob
         let audit_blob = AkdStorageFactory::create_storage(&namespace_info.configuration)
             .get_proof(&blob_name.into())
@@ -310,29 +320,314 @@ where
         )
         .await?;
         trace!(namespace = namespace_info.name, end_epoch, previous_hash = ?previous_hash, end_hash = ?end_hash, "Verified audit proof");
+        Ok(())
+    }
 
-        // sign the proof
+
+
+    async fn sign_blob(&mut self, blob_name: &SerializableAuditBlobName, namespace_info: &NamespaceInfo) -> Result<()> {
         let current_signing_key = self.signing_key_repository.get_current_signing_key().await;
         let signature = EpochSignature::sign(
             namespace_info.clone(),
-            end_epoch.into(),
-            end_hash,
+            blob_name.epoch.into(),
+            blob_name.current_hash,
             &current_signing_key,
         )?;
         trace!(
             namespace = namespace_info.name,
-            end_epoch, "Signed audit proof"
+            blob_name.epoch, "Signed audit proof"
         );
 
         // store the signature
         self.signature_storage
-            .set_signature(end_epoch, signature)
+            .set_signature(blob_name.epoch, signature)
             .await;
         trace!(
             namespace = namespace_info.name,
-            end_epoch, "Stored signature for audit proof"
+            blob_name.epoch, "Stored signature for audit proof"
         );
-
         Ok(())
     }
+}
+
+
+async fn interruptible_sleep(duration: Duration, signal: &mut Receiver<()>) -> bool {
+    tokio::select! {
+        _ = tokio::time::sleep(duration) => {
+            // Sleep completed normally
+            false
+        }
+        _ = signal.recv() => {
+            // Shutdown signal received
+            true
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tokio::sync::broadcast::{self, Receiver, Sender};
+    use akd_watch_common::{
+        akd_configurations::AkdConfiguration, storage::test_akd_storage::TestAkdStorage, testing::{MockNamespaceRepository, MockSignatureStorage, MockSigningKeyRepository}, Epoch, NamespaceStatus
+    };
+
+    /// Helper to create test namespace
+    fn create_test_namespace(name: &str, starting_epoch: u64) -> NamespaceInfo {
+        NamespaceInfo {
+            name: name.to_string(),
+            starting_epoch: Epoch::new(starting_epoch),
+            configuration: AkdConfiguration::TestConfiguration,
+            log_directory: "test".to_string(),
+            last_verified_epoch: Epoch::new(0),
+            status: NamespaceStatus::Online,
+        }
+    }
+
+    /// Helper to create test components
+    fn create_test_components() -> (
+        MockNamespaceRepository,
+        Arc<MockSigningKeyRepository>,
+        MockSignatureStorage,
+        Receiver<()>,
+        Sender<()>,
+    ) {
+        let namespace_repo = MockNamespaceRepository::new();
+        let signing_key_repo =Arc::new(MockSigningKeyRepository::new());
+        let signature_storage = MockSignatureStorage::new();
+        let (shutdown_tx, shutdown_rx) = broadcast::channel(1);
+
+        (namespace_repo, signing_key_repo, signature_storage, shutdown_rx, shutdown_tx)
+    }
+
+    #[tokio::test]
+    async fn test_interruptible_sleep_completes_normally() {
+        let (_shutdown_tx, mut shutdown_rx) = broadcast::channel(1);
+
+        let start = std::time::Instant::now();
+        let should_shutdown = interruptible_sleep(Duration::from_millis(50), &mut shutdown_rx).await;
+        let elapsed = start.elapsed();
+
+        assert!(!should_shutdown, "Sleep should complete normally without shutdown");
+        assert!(elapsed >= Duration::from_millis(40), "Sleep duration too short: {:?}", elapsed);
+        assert!(elapsed <= Duration::from_millis(200), "Sleep duration too long: {:?}", elapsed);
+    }
+
+    #[tokio::test]
+    async fn test_interruptible_sleep_interrupted_by_shutdown() {
+        // Create new shutdown channel for this test
+        let (shutdown_tx, mut shutdown_rx) = broadcast::channel(1);
+
+        let sleep_task = tokio::spawn(async move {
+            interruptible_sleep(Duration::from_millis(1000), &mut shutdown_rx).await
+        });
+
+        // Send shutdown signal immediately
+        shutdown_tx.send(()).unwrap();
+
+        let should_shutdown = sleep_task.await.unwrap();
+        assert!(should_shutdown, "Shutdown signal should interrupt sleep");
+    }
+
+    #[tokio::test]
+    async fn test_get_fresh_namespace_info_success() {
+        let (mut namespace_repo, signing_key_repo, signature_storage, shutdown_rx, _shutdown_tx) = create_test_components();
+        let namespace_info = create_test_namespace("test-namespace", 1);
+        let mut repo_version = namespace_info.clone();
+        repo_version.last_verified_epoch = Epoch::new(100);
+        
+        // Add namespace to repository
+        namespace_repo.add_namespace(repo_version).await.unwrap();
+
+        let auditor = NamespaceAuditor::new(
+            namespace_info.clone(),
+            Arc::new(namespace_repo),
+            signing_key_repo,
+            signature_storage,
+            Duration::from_millis(100),
+            shutdown_rx,
+        );
+
+        let fresh_info = auditor.get_fresh_namespace_info().await.unwrap();
+        assert_eq!(fresh_info.name, "test-namespace");
+        assert_eq!(fresh_info.starting_epoch, Epoch::new(1));
+        assert_eq!(fresh_info.last_verified_epoch, Epoch::new(100));
+    }
+
+    #[tokio::test]
+    async fn test_get_fresh_namespace_info_not_found() {
+        let (namespace_repo, signing_key_repo, signature_storage, shutdown_rx, _shutdown_tx) = create_test_components();
+        let namespace_info = create_test_namespace("test-namespace", 1);
+        
+        // Don't add namespace to repository
+
+        let auditor = NamespaceAuditor::new(
+            namespace_info,
+            Arc::new(namespace_repo),
+            signing_key_repo,
+            signature_storage,
+            Duration::from_millis(100),
+            shutdown_rx,
+        );
+
+        let result = auditor.get_fresh_namespace_info().await;
+        assert!(result.is_err(), "Should fail when namespace not found");
+        assert!(result.unwrap_err().to_string().contains("not found"));
+    }
+
+    #[tokio::test]
+    async fn test_get_and_verify_signature_none_found() {
+        let (namespace_repo, signing_key_repo, signature_storage, shutdown_rx, _shutdown_tx) = create_test_components();
+        let namespace_info = create_test_namespace("test-namespace", 1);
+
+        let auditor = NamespaceAuditor::new(
+            namespace_info,
+            Arc::new(namespace_repo),
+            signing_key_repo,
+            signature_storage,
+            Duration::from_millis(100),
+            shutdown_rx,
+        );
+
+        let result = auditor.get_and_verify_signature(1).await.unwrap();
+        assert!(result.is_none(), "Should return None when no signature found");
+    }
+
+    #[tokio::test]
+    async fn test_get_and_verify_signature_found_and_valid() {
+        let (namespace_repo, signing_key_repo, mut signature_storage, shutdown_rx, _shutdown_tx) = create_test_components();
+        let namespace_info = create_test_namespace("test-namespace", 1);
+
+        // Pre-sign epoch 1 using the repository's signing key
+        let signing_key = signing_key_repo.get_current_signing_key().await;
+        let signature = EpochSignature::sign(
+            namespace_info.clone(),
+            Epoch::new(1),
+            [1u8; 32],
+            &signing_key,
+        ).unwrap();
+        signature_storage.set_signature(1, signature).await;
+
+        let auditor = NamespaceAuditor::new(
+            namespace_info,
+            Arc::new(namespace_repo),
+            signing_key_repo,
+            signature_storage,
+            Duration::from_millis(100),
+            shutdown_rx,
+        );
+
+        let result = auditor.get_and_verify_signature(1).await.unwrap();
+        assert!(result.is_some(), "Should return signature when found and valid");
+    }
+
+    // TODO: Test akd polling and processing
+    #[tokio::test]
+    async fn test_poll_for_new_epochs() {
+        let (namespace_repo, signing_key_repo, signature_storage, shutdown_rx, _shutdown_tx) = create_test_components();
+        let namespace_info = create_test_namespace("test-namespace", 1);
+
+        let auditor = NamespaceAuditor::new(
+            namespace_info.clone(),
+            Arc::new(namespace_repo),
+            signing_key_repo,
+            signature_storage,
+            Duration::from_millis(100),
+            shutdown_rx,
+        );
+
+        let blob_names = auditor.poll_for_new_epochs(&namespace_info).await.unwrap();
+        assert_eq!(blob_names.len(), 100, "Should find 100 epochs");
+        for i in 1..=100 {
+            assert_eq!(blob_names[i - 1].previous_hash, TestAkdStorage::hash(i as u64), "Previous hash for epoch {} should match", i);
+            assert_eq!(blob_names[i - 1].current_hash, TestAkdStorage::hash(i as u64), "Current hash for epoch {} should match", i);
+            assert_eq!(blob_names[i - 1].epoch, i as u64, "Epoch {} should be found", i);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_verify_blob_blob_not_found() {
+        let (namespace_repo, signing_key_repo, signature_storage, shutdown_rx, _shutdown_tx) = create_test_components();
+        let namespace_info = create_test_namespace("test-namespace", 1);
+
+        // Create a mock blob name
+        let blob_name = SerializableAuditBlobName {
+            epoch: 200,
+            previous_hash: TestAkdStorage::hash(200),
+            current_hash: TestAkdStorage::hash(200),
+        };
+
+        let auditor = NamespaceAuditor::new(
+            namespace_info.clone(),
+            Arc::new(namespace_repo),
+            signing_key_repo,
+            signature_storage,
+            Duration::from_millis(100),
+            shutdown_rx,
+        );
+
+        // Verify the blob
+        let result = auditor.verify_blob(&blob_name, &namespace_info).await;
+        assert!(result.is_err(), "Blob verification should fail for non-existent blob");
+        assert!(result.unwrap_err().to_string().contains("No proof found for blob name"));
+    }
+
+    #[tokio::test]
+    async fn test_verify_blob_previous_signature_not_found() {
+        let (namespace_repo, signing_key_repo, signature_storage, shutdown_rx, _shutdown_tx) = create_test_components();
+        let namespace_info = create_test_namespace("test-namespace", 1);
+
+        // Create a mock blob name
+        let blob_name = SerializableAuditBlobName {
+            epoch: 2,
+            previous_hash: TestAkdStorage::hash(1),
+            current_hash: TestAkdStorage::hash(2),
+        };
+
+        let auditor = NamespaceAuditor::new(
+            namespace_info.clone(),
+            Arc::new(namespace_repo),
+            signing_key_repo,
+            signature_storage,
+            Duration::from_millis(100),
+            shutdown_rx,
+        );
+
+        // Verify the blob
+        let result = auditor.verify_blob(&blob_name, &namespace_info).await;
+        assert!(result.is_err(), "Blob verification should fail when previous signature not found");
+        assert!(result.unwrap_err().to_string().contains("Previous epoch 1 signature not found"));
+    }
+
+    // TODO: verify epoch equal to starting epoch case, but this requires verifiable proof data or service we can mock the verify on
+    // TODO: verify blob success case, but this requires verifiable proof data
+
+    #[tokio::test]
+    async fn test_sign_blob_success() {
+        let (namespace_repo, signing_key_repo, signature_storage, shutdown_rx, _shutdown_tx) = create_test_components();
+        let namespace_info = create_test_namespace("test-namespace", 1);
+        let blob_name = SerializableAuditBlobName {
+            epoch: 1,
+            previous_hash: TestAkdStorage::hash(1),
+            current_hash: TestAkdStorage::hash(1),
+        };
+
+        let mut auditor = NamespaceAuditor::new(
+            namespace_info.clone(),
+            Arc::new(namespace_repo),
+            signing_key_repo,
+            signature_storage.clone(),
+            Duration::from_millis(100),
+            shutdown_rx,
+        );
+        // Sign the blob
+        let result = auditor.sign_blob(&blob_name, &namespace_info).await;
+        assert!(result.is_ok(), "Signing blob should succeed");
+        // Check that the signature was stored
+        let signature = signature_storage.get_signature(&blob_name.epoch).await;
+        assert!(signature.is_some(), "Signature should be stored after signing");
+    }
+
+    // TODO: Test failure to sign and set signature, requires mocking for signing and signature storage
+    // TODO: test process_audit_request success and failure cases
 }

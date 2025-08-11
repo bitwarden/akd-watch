@@ -2,7 +2,7 @@ mod in_memory_storage;
 pub mod namespace_repository;
 pub mod whatsapp_akd_storage;
 pub mod signing_key_repository;
-#[cfg(test)]
+#[cfg(any(test, feature = "testing"))]
 pub mod test_akd_storage;
 
 use std::{fmt::{Debug, Display}, future::Future};

@@ -17,3 +17,7 @@ pub use akd_configurations::BitwardenV1Configuration;
 
 #[cfg(test)]
 pub use akd_configurations::TestAkdConfiguration;
+
+// Export testing utilities when cfg(test) is enabled
+#[cfg(any(test, feature = "testing"))]
+pub mod testing;

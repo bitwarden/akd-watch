@@ -3,7 +3,7 @@ use crate::{
     storage::{whatsapp_akd_storage::WhatsAppAkdStorage, AkdStorage},
 };
 
-#[cfg(test)]
+#[cfg(any(test, feature = "testing"))]
 use crate::storage::test_akd_storage::TestAkdStorage;
 
 /// Enum representing all possible AKD storage implementations
@@ -11,7 +11,7 @@ use crate::storage::test_akd_storage::TestAkdStorage;
 #[derive(Clone, Debug)]
 pub enum AkdStorageImpl {
     WhatsApp(WhatsAppAkdStorage),
-    #[cfg(test)]
+    #[cfg(any(test, feature = "testing"))]
     Test(TestAkdStorage),
 }
 
@@ -19,7 +19,7 @@ impl std::fmt::Display for AkdStorageImpl {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             AkdStorageImpl::WhatsApp(storage) => std::fmt::Display::fmt(storage, f),
-            #[cfg(test)]
+            #[cfg(any(test, feature = "testing"))]
             AkdStorageImpl::Test(storage) => std::fmt::Display::fmt(storage, f),
         }
     }
@@ -29,7 +29,7 @@ impl AkdStorage for AkdStorageImpl {
     async fn has_proof(&self, epoch: u64) -> bool {
         match self {
             AkdStorageImpl::WhatsApp(storage) => storage.has_proof(epoch).await,
-            #[cfg(test)]
+            #[cfg(any(test, feature = "testing"))]
             AkdStorageImpl::Test(storage) => storage.has_proof(epoch).await,
         }
     }
@@ -37,7 +37,7 @@ impl AkdStorage for AkdStorageImpl {
     async fn get_proof_name(&self, epoch: u64) -> Result<akd::local_auditing::AuditBlobName, crate::storage::AkdStorageError> {
         match self {
             AkdStorageImpl::WhatsApp(storage) => storage.get_proof_name(epoch).await,
-            #[cfg(test)]
+            #[cfg(any(test, feature = "testing"))]
             AkdStorageImpl::Test(storage) => storage.get_proof_name(epoch).await,
         }
     }
@@ -45,7 +45,7 @@ impl AkdStorage for AkdStorageImpl {
     async fn get_proof(&self, name: &akd::local_auditing::AuditBlobName) -> Result<akd::local_auditing::AuditBlob, crate::storage::AkdStorageError> {
         match self {
             AkdStorageImpl::WhatsApp(storage) => storage.get_proof(name).await,
-            #[cfg(test)]
+            #[cfg(any(test, feature = "testing"))]
             AkdStorageImpl::Test(storage) => storage.get_proof(name).await,
         }
     }
@@ -59,7 +59,7 @@ impl AkdStorageFactory {
     pub fn create_storage(config: &AkdConfiguration) -> AkdStorageImpl {
         match config {
             AkdConfiguration::WhatsAppV1Configuration => AkdStorageImpl::WhatsApp(WhatsAppAkdStorage::new()),
-            #[cfg(test)]
+            #[cfg(any(test, feature = "testing"))]
             AkdConfiguration::TestConfiguration => AkdStorageImpl::Test(TestAkdStorage::new()),
             _ => todo!("Unsupported configuration: {:?}", config),
         }
