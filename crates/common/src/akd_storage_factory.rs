@@ -1,6 +1,6 @@
 use crate::{
     akd_configurations::AkdConfiguration,
-    storage::{whatsapp_akd_storage::WhatsAppAkdStorage, AkdStorage},
+    storage::{whatsapp_akd_storage::WhatsAppAkdStorage, AkdStorage}, NamespaceInfo,
 };
 
 #[cfg(any(test, feature = "testing"))]
@@ -56,12 +56,12 @@ pub struct AkdStorageFactory;
 
 impl AkdStorageFactory {
     /// Create an AKD storage implementation based on the given configuration
-    pub fn create_storage(config: &AkdConfiguration) -> AkdStorageImpl {
-        match config {
+pub fn create_storage(namespace_info: &NamespaceInfo) -> AkdStorageImpl {
+        match namespace_info.configuration {
             AkdConfiguration::WhatsAppV1Configuration => AkdStorageImpl::WhatsApp(WhatsAppAkdStorage::new()),
             #[cfg(any(test, feature = "testing"))]
             AkdConfiguration::TestConfiguration => AkdStorageImpl::Test(TestAkdStorage::new()),
-            _ => todo!("Unsupported configuration: {:?}", config),
+            _ => todo!("Unsupported configuration: {:?}", namespace_info.configuration),
         }
     }
 }
@@ -72,14 +72,32 @@ mod tests {
 
     #[test]
     fn test_factory_creates_whatsapp_storage() {
-        let storage = AkdStorageFactory::create_storage(&AkdConfiguration::WhatsAppV1Configuration);
+        let namespace = NamespaceInfo {
+            name: "whatsapp".to_string(),
+            configuration: AkdConfiguration::WhatsAppV1Configuration,
+            log_directory: "https://d1tfr3x7n136ak.cloudfront.net/".to_string(),
+            starting_epoch: 1000000.into(),
+            status: crate::NamespaceStatus::Online,
+            last_verified_epoch: Some(1000000.into()),
+        };
+
+        let storage = AkdStorageFactory::create_storage(&namespace);
         assert!(matches!(storage, AkdStorageImpl::WhatsApp(_)));
         assert!(format!("{}", storage).contains("WhatsApp"));
     }
 
     #[test]
     fn test_factory_creates_test_storage() {
-        let storage = AkdStorageFactory::create_storage(&AkdConfiguration::TestConfiguration);
+        let namespace =         NamespaceInfo {
+            name: "test".to_string(),
+            configuration: AkdConfiguration::TestConfiguration,
+            log_directory: "https://example.com/".to_string(),
+            starting_epoch: 1000000.into(),
+            status: crate::NamespaceStatus::Online,
+            last_verified_epoch: Some(1000000.into()),
+        };
+
+        let storage = AkdStorageFactory::create_storage(&namespace);
         assert!(matches!(storage, AkdStorageImpl::Test(_)));
         assert!(format!("{}", storage).contains("Test"));
     }

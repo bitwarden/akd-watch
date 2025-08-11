@@ -55,7 +55,7 @@ The signing key configuration:
 Each namespace requires:
 - `name`: Unique namespace identifier
 - `configuration_type`: Either "WhatsAppV1" or "BitwardenV1"
-- `log_directory`: Directory path for storing logs
+- `log_directory`: Url to query for AKD proofs
 - `starting_epoch` (optional): Epoch to start auditing from (defaults to 0, only used if namespace doesn't already exist in repository)
 - `status`: Either "Online" or "Disabled"
 

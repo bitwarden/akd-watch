@@ -1,5 +1,5 @@
 use anyhow::Result;
-use tracing::{info, error};
+use tracing::{error, info, trace};
 use tracing_subscriber;
 
 mod error;
@@ -12,7 +12,9 @@ use auditor_app::AuditorApp;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::fmt().with_max_level(tracing::Level::TRACE).init();
+
+    trace!("Starting auditor application");
 
     let config = AuditorConfig::load()
         .map_err(|e| anyhow::anyhow!("Failed to load configuration: {}", e))?;

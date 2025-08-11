@@ -19,7 +19,23 @@ pub struct NamespaceInfo {
     pub configuration: AkdConfiguration,
     pub name: String,
     pub log_directory: String,
-    pub last_verified_epoch: Epoch,
+    pub last_verified_epoch: Option<Epoch>,
     pub starting_epoch: Epoch,
     pub status: NamespaceStatus,
+}
+
+impl NamespaceInfo {
+    pub fn update_last_verified_epoch(&self, epoch: Epoch) -> Self {
+        NamespaceInfo {
+            last_verified_epoch: Some(epoch),
+            ..self.clone()
+        }
+    }
+
+    pub fn update_status(&self, status: NamespaceStatus) -> Self {
+        NamespaceInfo {
+            status,
+            ..self.clone()
+        }
+    }
 }

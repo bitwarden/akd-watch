@@ -43,7 +43,7 @@ pub struct NamespaceConfig {
     /// Configuration type
     pub configuration_type: AkdConfigurationType,
     
-    /// Directory where logs are stored
+    /// Url to query for proofs
     pub log_directory: String,
     
     /// Starting epoch for auditing (only used if no existing namespace info found)
@@ -189,8 +189,7 @@ impl NamespaceConfig {
         
         // Use existing last_verified_epoch if available, otherwise use starting_epoch from config
         let last_verified_epoch = existing_namespace_info
-            .map(|info| info.last_verified_epoch)
-            .unwrap_or_else(|| self.starting_epoch.into());
+            .map(|info| info.last_verified_epoch).flatten();
         
         // Always use the starting_epoch from config (may have been updated)
         let starting_epoch = self.starting_epoch.into();
@@ -263,7 +262,8 @@ mod tests {
         // Test with no existing namespace info (should use starting_epoch)
         let (namespace_info, status_changed) = namespace_config.to_namespace_info(None).unwrap();
         assert_eq!(namespace_info.name, "test");
-        assert_eq!(namespace_info.last_verified_epoch, 5u64.into());
+        assert_eq!(namespace_info.last_verified_epoch, None); // No existing info, so None
+        assert_eq!(namespace_info.starting_epoch, 5u64.into());
         assert!(!status_changed); // New namespace, so no change
         
         // Test with existing namespace info (should preserve existing last_verified_epoch)
@@ -271,14 +271,14 @@ mod tests {
             configuration: AkdConfiguration::WhatsAppV1Configuration,
             name: "test".to_string(),
             log_directory: "logs/test".to_string(),
-            last_verified_epoch: 10u64.into(),
+            last_verified_epoch: Some(10u64.into()),
             starting_epoch: 5u64.into(),
             status: NamespaceStatus::Online,
         };
         
         let (namespace_info, status_changed) = namespace_config.to_namespace_info(Some(&existing_info)).unwrap();
         assert_eq!(namespace_info.name, "test");
-        assert_eq!(namespace_info.last_verified_epoch, 10u64.into()); // Should preserve existing value
+        assert_eq!(namespace_info.last_verified_epoch, Some(10u64.into())); // Should preserve existing value
         assert!(!status_changed); // Both Online, no change
     }
     
@@ -324,7 +324,7 @@ mod tests {
             configuration: AkdConfiguration::WhatsAppV1Configuration,
             name: "test".to_string(),
             log_directory: "logs/test".to_string(),
-            last_verified_epoch: 5u64.into(),
+            last_verified_epoch: Some(5u64.into()),
             starting_epoch: 1u64.into(),
             status: NamespaceStatus::Online,
         };
@@ -338,7 +338,7 @@ mod tests {
             configuration: AkdConfiguration::WhatsAppV1Configuration,
             name: "test".to_string(),
             log_directory: "logs/test".to_string(),
-            last_verified_epoch: 5u64.into(),
+            last_verified_epoch: Some(5u64.into()),
             starting_epoch: 1u64.into(),
             status: NamespaceStatus::Initialization,
         };
@@ -352,7 +352,7 @@ mod tests {
             configuration: AkdConfiguration::WhatsAppV1Configuration,
             name: "test".to_string(),
             log_directory: "logs/test".to_string(),
-            last_verified_epoch: 5u64.into(),
+            last_verified_epoch: Some(5u64.into()),
             starting_epoch: 1u64.into(),
             status: NamespaceStatus::SignatureLost,
         };
@@ -366,7 +366,7 @@ mod tests {
             configuration: AkdConfiguration::WhatsAppV1Configuration,
             name: "test".to_string(),
             log_directory: "logs/test".to_string(),
-            last_verified_epoch: 5u64.into(),
+            last_verified_epoch: Some(5u64.into()),
             starting_epoch: 1u64.into(),
             status: NamespaceStatus::SignatureVerificationFailed,
         };

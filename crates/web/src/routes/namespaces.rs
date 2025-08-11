@@ -9,7 +9,7 @@ pub async fn handle_query_namespace(
         configuration: AkdConfiguration::BitwardenV1Configuration,
         name: namespace.clone(),
         log_directory: format!("Namespace: {}", namespace),
-        last_verified_epoch: Epoch::new(42),
+        last_verified_epoch: Some(Epoch::new(42)),
         starting_epoch: Epoch::new(1),
         status: NamespaceStatus::Online,
     }.into())

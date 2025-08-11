@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::sync::RwLock;
 
 use akd_watch_common::{
     storage::{
@@ -19,8 +20,8 @@ use crate::namespace_auditor::NamespaceAuditor;
 
 /// Main auditor application
 pub struct AuditorApp<NR, SKR, SS> {
-    namespace_repository: Arc<NR>,
-    signing_key_repository: Arc<SKR>,
+    namespace_repository: Arc<RwLock<NR>>,
+    signing_key_repository: Arc<RwLock<SKR>>,
     signature_storage_map: HashMap<String, SS>,
     sleep_duration: Duration,
     shutdown_tx: broadcast::Sender<()>,
@@ -34,13 +35,13 @@ impl AuditorApp<InMemoryNamespaceRepository, InMemorySigningKeyRepository, InMem
         // Initialize repositories and storage based on config
         let namespace_repository = Self::init_namespace_repository(&config).await?;
         let signature_storage_map = Self::init_signature_storage(&config).await?;
-        let signing_key_repository = Arc::new(Self::init_signing_key_repository(&config));
+        let signing_key_repository = Arc::new(RwLock::new(Self::init_signing_key_repository(&config)));
 
         // Create shutdown channel
         let (shutdown_tx, _) = broadcast::channel(1);
 
         Ok(AuditorApp {
-            namespace_repository: Arc::new(namespace_repository),
+            namespace_repository: Arc::new(RwLock::new(namespace_repository)),
             signing_key_repository,
             signature_storage_map,
             sleep_duration: config.sleep_duration(),
@@ -59,7 +60,7 @@ where
     /// Run the auditor application
     pub async fn run(&self) -> Result<()> {
         // Get all namespaces from the repository
-        let namespace_infos = self.namespace_repository
+        let namespace_infos = self.namespace_repository.read().await
             .list_namespaces()
             .await
             .with_context(|| "Failed to get namespaces from repository")?;

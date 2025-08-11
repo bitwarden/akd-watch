@@ -82,11 +82,21 @@ impl Epoch {
     pub fn value(&self) -> u64 {
         self.0
     }
+
+    pub fn next(&self) -> Self {
+        Epoch(self.0 + 1)
+    }
 }
 
 impl From<u64> for Epoch {
     fn from(value: u64) -> Self {
         Epoch(value)
+    }
+}
+
+impl From<Epoch> for u64 {
+    fn from(epoch: Epoch) -> Self {
+        epoch.0
     }
 }
 

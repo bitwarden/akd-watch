@@ -80,19 +80,4 @@ impl SignatureStorage for MockSignatureStorage {
         }
         async move {}
     }
-
-    fn latest_signed_epoch(&self) -> impl std::future::Future<Output = u64> + Send {
-        let result = if *self.should_fail_get.read().unwrap() {
-            0
-        } else {
-            self.signatures
-                .read()
-                .unwrap()
-                .keys()
-                .cloned()
-                .max()
-                .unwrap_or(0)
-        };
-        async move { result }
-    }
 }

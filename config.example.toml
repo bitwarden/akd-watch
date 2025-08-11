@@ -34,15 +34,8 @@ type = "InMemory"
 
 # Namespace configurations
 [[namespaces]]
-name = "example_namespace"
+name = "whatsapp"
 configuration_type = "WhatsAppV1"  # Options: "WhatsAppV1", "BitwardenV1"
-log_directory = "logs/example_namespace"
-starting_epoch = 0  # Optional: epoch to start auditing from (defaults to 0)
+log_directory = "https://d1tfr3x7n136ak.cloudfront.net/"
+starting_epoch = 1000000  # Optional: epoch to start auditing from (defaults to 0)
 status = "Online"  # Options: "Online", "Disabled"
-
-[[namespaces]]
-name = "bitwarden_namespace"
-configuration_type = "BitwardenV1"
-log_directory = "logs/bitwarden_namespace"
-starting_epoch = 10  # Optional: epoch to start auditing from (defaults to 0)
-status = "Online"

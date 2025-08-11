@@ -3,6 +3,7 @@ use std::fmt::Display;
 use akd::{local_auditing::{AuditBlob, AuditBlobName}};
 use quick_xml::events::Event;
 use quick_xml::Reader;
+use tracing::instrument;
 
 use crate::storage::{AkdStorage, AkdStorageError};
 
@@ -64,12 +65,14 @@ impl WhatsAppAkdStorage {
 }
 
 impl AkdStorage for WhatsAppAkdStorage {
+    #[instrument(level = "info", skip_all, fields(base_url = self.base_url, epoch = epoch))]
     async fn has_proof(&self, epoch: u64) -> bool {
         self.get_key_for_epoch(epoch).await
             .map(|key| key.is_some())
             .unwrap_or(false)
     }
 
+    #[instrument(level = "info", skip_all, fields(base_url = self.base_url, epoch = name.epoch))]
     async fn get_proof(&self, name: &AuditBlobName) -> Result<AuditBlob, AkdStorageError> {
         let url = format!("{}/{}", self.base_url, name.to_string());
         let resp = reqwest::get(url).await
@@ -81,6 +84,7 @@ impl AkdStorage for WhatsAppAkdStorage {
         Ok(AuditBlob { data, name: name.clone() })
     }
 
+    #[instrument(level = "info", skip_all, fields(base_url = self.base_url, epoch = epoch))]
     async fn get_proof_name(&self, epoch: u64) -> Result<AuditBlobName, AkdStorageError> {
         match self.get_key_for_epoch(epoch).await? {
             Some(key) => AuditBlobName::try_from(key.as_str())

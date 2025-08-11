@@ -20,7 +20,6 @@ pub trait SignatureStorage: Clone + Debug + Send + Sync {
         epoch: u64,
         signature: EpochSignature,
     ) -> impl Future<Output = ()> + Send;
-    fn latest_signed_epoch(&self) -> impl Future<Output = u64> + Send;
 }
 
 pub trait AkdStorage: Clone + Display + Debug + Send + Sync {
