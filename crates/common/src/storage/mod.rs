@@ -1,4 +1,4 @@
-mod in_memory_storage;
+mod in_memory_signature_storage;
 pub mod namespace_repository;
 pub mod whatsapp_akd_storage;
 pub mod signing_key_repository;
@@ -8,7 +8,7 @@ pub mod test_akd_storage;
 use std::{fmt::{Debug, Display}, future::Future};
 
 use akd::{local_auditing::{AuditBlob, AuditBlobName}};
-pub use in_memory_storage::InMemoryStorage;
+pub use in_memory_signature_storage::InMemoryStorage;
 
 use crate::{EpochSignature};
 

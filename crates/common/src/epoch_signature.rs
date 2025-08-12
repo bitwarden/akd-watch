@@ -58,6 +58,7 @@ impl EpochSignatureV1 {
     }
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct EpochSignedMessage {
     ciphersuite: Ciphersuite,
     namespace: String,
@@ -71,8 +72,12 @@ impl EpochSignedMessage {
         match self.ciphersuite {
             Ciphersuite::ProtobufEd25519 => {
                 // Serialize the message to a protobuf format
-                // This is a placeholder; actual serialization logic will depend on the protobuf schema
+                // TODO: This is a placeholder; actual serialization logic will depend on the protobuf schema
                 Ok(vec![])
+            }
+            Ciphersuite::JsonEd25519 => {
+                // Serialize the message to a JSON format
+                serde_json::to_vec(&self).map_err(AkdWatchError::SerdeJsonError)
             }
             _ => Err(AkdWatchError::UnsupportedCiphersuite(self.ciphersuite))
         }

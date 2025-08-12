@@ -10,6 +10,7 @@ use crate::AkdWatchError;
 #[repr(u32)]
 pub enum Ciphersuite {
     ProtobufEd25519 = 0x0001,
+    JsonEd25519 = 0xF000,
     Unknown(u32),
 }
 
@@ -17,6 +18,7 @@ impl From<u32> for Ciphersuite {
     fn from(value: u32) -> Self {
         match value {
             0x0001 => Ciphersuite::ProtobufEd25519,
+            0xF000 => Ciphersuite::JsonEd25519,
             other => Ciphersuite::Unknown(other),
         }
     }
@@ -26,6 +28,7 @@ impl From<Ciphersuite> for u32 {
     fn from(value: Ciphersuite) -> Self {
         match value {
             Ciphersuite::ProtobufEd25519 => 0x0001,
+            Ciphersuite::JsonEd25519 => 0xF000,
             Ciphersuite::Unknown(other) => other,
         }
     }
@@ -33,7 +36,8 @@ impl From<Ciphersuite> for u32 {
 
 impl Default for Ciphersuite {
     fn default() -> Self {
-        Ciphersuite::ProtobufEd25519
+        // TODO: Should we stick with protobuf like plexi?
+        Ciphersuite::JsonEd25519
     }
 }
 

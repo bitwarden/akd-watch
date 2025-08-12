@@ -3,6 +3,7 @@ use std::fmt::Display;
 use akd::{local_auditing::{AuditBlob, AuditBlobName}};
 use quick_xml::events::Event;
 use quick_xml::Reader;
+use reqwest::header::CACHE_CONTROL;
 use tracing::instrument;
 
 use crate::storage::{AkdStorage, AkdStorageError};
@@ -34,8 +35,10 @@ impl Display for WhatsAppAkdStorage {
 impl WhatsAppAkdStorage {
     async fn get_key_for_epoch(&self, epoch: u64) -> Result<Option<String>, AkdStorageError> {
         let url = format!("{}/?list-type=2&prefix={}/", self.base_url, epoch);
+        // make a client with no chache
         let client = reqwest::Client::new();
-        let resp = client.get(url).send().await
+        // TODO: we're getting failures pulling proofs taht exist for minutes. Need to figure out why we're so far behind
+        let resp = client.get(url).header(CACHE_CONTROL, "no-store").send().await
             .map_err(|e| AkdStorageError::Custom(format!("Request failed: {}", e)))?
             .bytes().await
             .map_err(|e| AkdStorageError::Custom(format!("Failed to read response: {}", e)))?;
