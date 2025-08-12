@@ -6,7 +6,7 @@ use tokio::sync::RwLock;
 use akd_watch_common::storage::{
     namespace_repository::{InMemoryNamespaceRepository, NamespaceRepository},
     signatures::{FilesystemSignatureStorage, SignatureStorage},
-    signing_keys::{InMemorySigningKeyRepository, SigningKeyRepository},
+    signing_keys::{FileSigningKeyRepository, SigningKeyRepository},
 };
 use anyhow::{Context, Result};
 use futures_util::future;
@@ -28,7 +28,7 @@ pub struct AuditorApp<NR, SKR, SS> {
 impl
     AuditorApp<
         InMemoryNamespaceRepository,
-        InMemorySigningKeyRepository,
+        FileSigningKeyRepository,
         FilesystemSignatureStorage,
     >
 {
@@ -207,10 +207,10 @@ where
         Ok(storage_map)
     }
 
-    fn init_signing_key_repository(config: &AuditorConfig) -> InMemorySigningKeyRepository {
-        // TODO: Could configure repository type based on config in the future
-        InMemorySigningKeyRepository::new(chrono::Duration::seconds(
-            config.signing.key_lifetime_seconds,
-        ))
+    fn init_signing_key_repository(config: &AuditorConfig) -> FileSigningKeyRepository {
+        FileSigningKeyRepository::new(
+            config.signing.key_dir.clone(),
+            chrono::Duration::seconds(config.signing.key_lifetime_seconds),
+        )
     }
 }

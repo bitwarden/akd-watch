@@ -161,7 +161,7 @@ impl EpochSignature {
         let signing_key_id = self.signing_key_id();
         let verifying_key = verifying_key_repo
             .get_verifying_key(signing_key_id)
-            .await
+            .await.unwrap()
             .ok_or_else(|| AkdWatchError::VerifyingKeyNotFound(signing_key_id))?;
 
         match self {

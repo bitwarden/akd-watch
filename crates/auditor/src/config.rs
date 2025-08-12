@@ -55,7 +55,7 @@ pub struct NamespaceConfig {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SigningConfig {
     /// Path to the signing key file
-    pub key_file: String,
+    pub key_dir: String,
     #[serde(default = "default_key_lifetime_seconds")]
     pub key_lifetime_seconds: i64,
 }

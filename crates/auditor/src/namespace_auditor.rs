@@ -1,15 +1,11 @@
-use std::sync::Arc;
+use std::{os::unix::process, sync::Arc};
 use std::time::Duration;
 use tokio::sync::RwLock;
 
 use akd_watch_common::{
-    EpochSignature, NamespaceInfo, SerializableAuditBlobName,
-    akd_configurations::verify_consecutive_append_only,
-    akd_storage_factory::AkdStorageFactory,
-    storage::{
-        AkdStorage, namespace_repository::NamespaceRepository, signatures::SignatureStorage,
-        signing_keys::SigningKeyRepository,
-    },
+    akd_configurations::verify_consecutive_append_only, akd_storage_factory::AkdStorageFactory, storage::{
+        namespace_repository::NamespaceRepository, signatures::SignatureStorage, signing_keys::SigningKeyRepository, AkdStorage
+    }, tic_toc, EpochSignature, NamespaceInfo, SerializableAuditBlobName
 };
 use anyhow::Result;
 use tokio::sync::broadcast::Receiver;
@@ -81,7 +77,8 @@ where
                 trace!(
                     namespace = self.namespace_info.name,
                     sleep_duration = ?self.sleep_duration,
-                    "Audit cycle complete, sleeping"
+                    processed_count,
+                    "Audit cycle complete"
                 );
 
                 self.interruptible_sleep(&processed_count).await
@@ -103,8 +100,17 @@ where
     /// Returns true if shutdown was received, false if sleep completed normally
     async fn interruptible_sleep(&mut self, processed_count: &usize) -> bool {
         let sleep_duration = if *processed_count != MAX_EPOCHS_PER_POLL {
+            trace!(
+                namespace = self.namespace_info.name,
+                sleep_duration = ?self.sleep_duration,
+                "Sleeping for configured duration after processing epochs"
+            );
             self.sleep_duration
         } else {
+            trace!(
+                namespace = self.namespace_info.name,
+                "Processed all epochs in this cycle, no sleep needed"
+            );
             Duration::from_millis(10) // No sleep if we processed all epochs, but we want to check for shutdown
         };
 
@@ -172,6 +178,11 @@ where
                     e
                 ));
             } else {
+                // record the successful audit
+                let mut repo = self.namespace_repository.write().await;
+                repo.update_namespace(namespace_info.update_last_verified_epoch(blob_name.epoch.into()))
+                .await?;
+
                 info!(
                     namespace = namespace_info.name,
                     epoch = blob_name.epoch,
@@ -279,11 +290,6 @@ where
         // sign the proof
         let _signed = self.sign_blob(blob_name, namespace_info).await?;
 
-        // Update the namespace info in the repository
-        let mut repo = self.namespace_repository.write().await;
-        repo.update_namespace(namespace_info.update_last_verified_epoch(blob_name.epoch.into()))
-            .await?;
-
         Ok(())
     }
 
@@ -293,7 +299,7 @@ where
         if let Some(signature) = self.signature_storage.get_signature(&epoch).await? {
             // Verify the signature
             let singing_key_repository = self.signing_key_repository.read().await;
-            let verifying_repo = singing_key_repository.verifying_key_repository();
+            let verifying_repo = singing_key_repository.verifying_key_repository()?;
             signature.verify(&verifying_repo).await.map_err(|e| {
                 anyhow::anyhow!("Signature verification failed for epoch {}: {}", epoch, e)
             })?;
@@ -376,7 +382,7 @@ where
             .read()
             .await
             .get_current_signing_key()
-            .await;
+            .await?;
         let signature = EpochSignature::sign(
             namespace_info.clone(),
             blob_name.epoch.into(),
@@ -576,7 +582,7 @@ mod tests {
         let namespace_info = create_test_namespace("test-namespace", 1);
 
         // Pre-sign epoch 1 using the repository's signing key
-        let signing_key = signing_key_repo.get_current_signing_key().await;
+        let signing_key = signing_key_repo.get_current_signing_key().await.unwrap();
         let signature = EpochSignature::sign(
             namespace_info.clone(),
             Epoch::new(1),

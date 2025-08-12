@@ -9,7 +9,7 @@ use uuid::Uuid;
 
 use crate::{
     crypto::{SigningKey, VerifyingKey},
-    storage::signing_keys::{SigningKeyRepository, VerifyingKeyRepository},
+    storage::signing_keys::{SigningKeyRepository, SigningKeyRepositoryError, VerifyingKeyRepository, VerifyingKeyRepositoryError},
 };
 
 #[derive(Clone, Debug)]
@@ -54,8 +54,8 @@ impl InMemorySigningKeyRepository {
 }
 
 impl SigningKeyRepository for InMemorySigningKeyRepository {
-    async fn get_current_signing_key(&self) -> SigningKey {
-        let mut key_state = self.keys.lock().unwrap();
+    async fn get_current_signing_key(&self) -> Result<SigningKey, SigningKeyRepositoryError> {
+        let mut key_state = self.keys.lock().map_err(|_| SigningKeyRepositoryError::Custom("Poisoned key state".into()))?;
 
         // Check if the current key is expired
         if key_state.current_signing_key.is_expired() {
@@ -68,10 +68,10 @@ impl SigningKeyRepository for InMemorySigningKeyRepository {
             key_state.expired_keys.push(expired_key);
         }
 
-        key_state.current_signing_key.clone()
+        Ok(key_state.current_signing_key.clone())
     }
 
-    async fn force_key_rotation(&self) -> Result<(), String> {
+    async fn force_key_rotation(&self) -> Result<(), SigningKeyRepositoryError> {
         let mut key_state = self.keys.lock().unwrap();
 
         // Replace current key with new one and get the old key to expire
@@ -86,7 +86,7 @@ impl SigningKeyRepository for InMemorySigningKeyRepository {
         Ok(())
     }
 
-    fn verifying_key_repository(&self) -> impl VerifyingKeyRepository {
+    fn verifying_key_repository(&self) -> Result<impl VerifyingKeyRepository, SigningKeyRepositoryError> {
         let mut verifying_keys = Vec::new();
 
         let key_state = self.keys.lock().unwrap();
@@ -103,7 +103,7 @@ impl SigningKeyRepository for InMemorySigningKeyRepository {
             }
         }
 
-        InMemoryVerifyingKeyRepository::new(verifying_keys)
+        Ok(InMemoryVerifyingKeyRepository::new(verifying_keys))
     }
 }
 
@@ -125,9 +125,9 @@ impl InMemoryVerifyingKeyRepository {
 }
 
 impl VerifyingKeyRepository for InMemoryVerifyingKeyRepository {
-    async fn get_verifying_key(&self, key_id: Uuid) -> Option<VerifyingKey> {
+    async fn get_verifying_key(&self, key_id: Uuid) -> Result<Option<VerifyingKey>, VerifyingKeyRepositoryError> {
         let keys = self.verifying_keys.lock().unwrap();
-        keys.get(&key_id).cloned()
+        Ok(keys.get(&key_id).cloned())
     }
 }
 
@@ -143,7 +143,7 @@ mod tests {
     #[tokio::test]
     async fn test_new_repository_has_initial_key() {
         let repo = InMemorySigningKeyRepository::new(LONG_KEY_LIFETIME);
-        let key = repo.get_current_signing_key().await;
+        let key = repo.get_current_signing_key().await.unwrap();
 
         // Should have a valid key
         assert!(!key.is_expired());
@@ -155,8 +155,8 @@ mod tests {
     async fn test_get_current_signing_key_returns_same_key_when_not_expired() {
         let repo = InMemorySigningKeyRepository::new(LONG_KEY_LIFETIME);
 
-        let key1 = repo.get_current_signing_key().await;
-        let key2 = repo.get_current_signing_key().await;
+        let key1 = repo.get_current_signing_key().await.unwrap();
+        let key2 = repo.get_current_signing_key().await.unwrap();
 
         // Should return the same key
         assert_eq!(key1.key_id(), key2.key_id());
@@ -167,12 +167,12 @@ mod tests {
         // Create repo with very short key lifetime
         let repo = InMemorySigningKeyRepository::new(SHORT_KEY_LIFETIME);
 
-        let key1 = repo.get_current_signing_key().await;
+        let key1 = repo.get_current_signing_key().await.unwrap();
 
         // Wait for key to expire
         tokio::time::sleep(std::time::Duration::from_millis(10)).await;
 
-        let key2 = repo.get_current_signing_key().await;
+        let key2 = repo.get_current_signing_key().await.unwrap();
 
         // Should get a different key
         assert_ne!(key1.key_id(), key2.key_id());
@@ -183,7 +183,7 @@ mod tests {
     async fn test_expired_key_moved_to_expired_keys() {
         let repo = InMemorySigningKeyRepository::new(SHORT_KEY_LIFETIME);
 
-        let key1 = repo.get_current_signing_key().await;
+        let key1 = repo.get_current_signing_key().await.unwrap();
         let key1_id = key1.key_id();
 
         // Initially should have no expired keys
@@ -192,7 +192,7 @@ mod tests {
         // Wait for key to expire
         tokio::time::sleep(std::time::Duration::from_millis(10)).await;
 
-        let _key2 = repo.get_current_signing_key().await;
+        let _key2 = repo.get_current_signing_key().await.unwrap();
 
         // Should now have one expired key
         assert_eq!(repo.get_expired_keys_count(), 1);
@@ -204,7 +204,7 @@ mod tests {
     async fn test_force_key_rotation() {
         let repo = InMemorySigningKeyRepository::new(LONG_KEY_LIFETIME);
 
-        let key1 = repo.get_current_signing_key().await;
+        let key1 = repo.get_current_signing_key().await.unwrap();
         let key1_id = key1.key_id();
 
         // Initially should have no expired keys
@@ -214,7 +214,7 @@ mod tests {
         let result = repo.force_key_rotation().await;
         assert!(result.is_ok());
 
-        let key2 = repo.get_current_signing_key().await;
+        let key2 = repo.get_current_signing_key().await.unwrap();
 
         // Should have a different key
         assert_ne!(key1_id, key2.key_id());
@@ -226,9 +226,9 @@ mod tests {
         assert!(expired_key_ids.contains(&key1_id));
 
         // Both keys should be available in verifying key repository
-        let verifying_repo = repo.verifying_key_repository();
-        let old_verifying_key = verifying_repo.get_verifying_key(key1_id).await;
-        let current_verifying_key = verifying_repo.get_verifying_key(key2.key_id()).await;
+        let verifying_repo = repo.verifying_key_repository().unwrap();
+        let old_verifying_key = verifying_repo.get_verifying_key(key1_id).await.unwrap();
+        let current_verifying_key = verifying_repo.get_verifying_key(key2.key_id()).await.unwrap();
         assert!(old_verifying_key.is_some());
         assert!(current_verifying_key.is_some());
     }
@@ -240,13 +240,13 @@ mod tests {
         let mut key_ids = Vec::new();
 
         // Collect initial key
-        let initial_key = repo.get_current_signing_key().await;
+        let initial_key = repo.get_current_signing_key().await.unwrap();
         key_ids.push(initial_key.key_id());
 
         // Force multiple rotations
         for _ in 0..3 {
             repo.force_key_rotation().await.unwrap();
-            let current_key = repo.get_current_signing_key().await;
+            let current_key = repo.get_current_signing_key().await.unwrap();
             key_ids.push(current_key.key_id());
         }
 
@@ -269,9 +269,9 @@ mod tests {
         }
 
         // All keys (current + expired) should be available in verifying key repository
-        let verifying_repo = repo.verifying_key_repository();
+        let verifying_repo = repo.verifying_key_repository().unwrap();
         for &key_id in &key_ids {
-            let verifying_key = verifying_repo.get_verifying_key(key_id).await;
+            let verifying_key = verifying_repo.get_verifying_key(key_id).await.unwrap();
             assert!(
                 verifying_key.is_some(),
                 "Key {} should be available for verification",
@@ -284,19 +284,19 @@ mod tests {
     async fn test_verifying_key_repository_contains_current_and_expired_keys() {
         let repo = InMemorySigningKeyRepository::new(LONG_KEY_LIFETIME);
 
-        let key1 = repo.get_current_signing_key().await;
+        let key1 = repo.get_current_signing_key().await.unwrap();
         let key1_id = key1.key_id();
 
         repo.force_key_rotation().await.unwrap();
 
-        let key2 = repo.get_current_signing_key().await;
+        let key2 = repo.get_current_signing_key().await.unwrap();
         let key2_id = key2.key_id();
 
-        let verifying_repo = repo.verifying_key_repository();
+        let verifying_repo = repo.verifying_key_repository().unwrap();
 
         // Both keys should be available for verification
-        let verifying_key1 = verifying_repo.get_verifying_key(key1_id).await;
-        let verifying_key2 = verifying_repo.get_verifying_key(key2_id).await;
+        let verifying_key1 = verifying_repo.get_verifying_key(key1_id).await.unwrap();
+        let verifying_key2 = verifying_repo.get_verifying_key(key2_id).await.unwrap();
 
         assert!(verifying_key1.is_some());
         assert!(verifying_key2.is_some());
@@ -307,10 +307,10 @@ mod tests {
     #[tokio::test]
     async fn test_verifying_key_repository_returns_none_for_unknown_key() {
         let repo = InMemorySigningKeyRepository::new(LONG_KEY_LIFETIME);
-        let verifying_repo = repo.verifying_key_repository();
+        let verifying_repo = repo.verifying_key_repository().unwrap();
 
         let unknown_key_id = uuid::Uuid::new_v4();
-        let result = verifying_repo.get_verifying_key(unknown_key_id).await;
+        let result = verifying_repo.get_verifying_key(unknown_key_id).await.unwrap();
 
         assert!(result.is_none());
     }
@@ -325,7 +325,7 @@ mod tests {
 
         for _ in 0..10 {
             let repo_clone = repo_clone.clone();
-            let handle = tokio::spawn(async move { repo_clone.get_current_signing_key().await });
+            let handle = tokio::spawn(async move { repo_clone.get_current_signing_key().await.unwrap() });
             handles.push(handle);
         }
 
@@ -363,7 +363,7 @@ mod tests {
         }
 
         // Should have accumulated expired keys and repository should still work
-        let current_key = repo.get_current_signing_key().await;
+        let current_key = repo.get_current_signing_key().await.unwrap();
         assert!(!current_key.is_expired());
     }
 
@@ -372,8 +372,8 @@ mod tests {
         let repo1 = InMemorySigningKeyRepository::new(LONG_KEY_LIFETIME);
         let repo2 = repo1.clone();
 
-        let key1 = repo1.get_current_signing_key().await;
-        let key2 = repo2.get_current_signing_key().await;
+        let key1 = repo1.get_current_signing_key().await.unwrap();
+        let key2 = repo2.get_current_signing_key().await.unwrap();
 
         // Both should return the same key (shared state)
         assert_eq!(key1.key_id(), key2.key_id());
@@ -383,18 +383,18 @@ mod tests {
     async fn test_automatic_rotation_vs_forced_rotation() {
         let repo = InMemorySigningKeyRepository::new(SHORT_KEY_LIFETIME);
 
-        let key1 = repo.get_current_signing_key().await;
+        let key1 = repo.get_current_signing_key().await.unwrap();
 
         // Wait for automatic expiration
         tokio::time::sleep(std::time::Duration::from_millis(10)).await;
 
         // This should trigger automatic rotation
-        let key2 = repo.get_current_signing_key().await;
+        let key2 = repo.get_current_signing_key().await.unwrap();
         assert_ne!(key1.key_id(), key2.key_id());
 
         // This should trigger forced rotation
         repo.force_key_rotation().await.unwrap();
-        let key3 = repo.get_current_signing_key().await;
+        let key3 = repo.get_current_signing_key().await.unwrap();
         assert_ne!(key2.key_id(), key3.key_id());
 
         // All three keys should be different

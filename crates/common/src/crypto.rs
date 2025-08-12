@@ -1,5 +1,6 @@
 use chrono::{DateTime, Duration, Utc};
 use rand::Rng;
+use serde::{Deserialize, Serialize};
 use std::sync::{Arc, RwLock};
 
 use uuid::Uuid;
@@ -45,12 +46,12 @@ impl SigningKey {
             not_after_date: Utc::now() + lifetime,
         }
     }
-    pub fn verifying_key(&self) -> Result<VerifyingKey, AkdWatchError> {
+    pub fn verifying_key(&self) -> Result<VerifyingKey, String> {
         Ok(VerifyingKey {
             verifying_key: self
                 .signing_key
                 .read()
-                .map_err(|_| AkdWatchError::PoisonedSigningKey)?
+                .map_err(|_| "Poisoned Signing Key Cache")?
                 .verifying_key(),
             key_id: self.key_id,
             not_after_date: self.not_after_date,
@@ -67,7 +68,61 @@ impl SigningKey {
     }
 }
 
-#[derive(Clone, Debug)]
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SerializableSigningKey {
+    pub signing_key: ed25519_dalek::SigningKey,
+    pub key_id: Uuid,
+    pub not_after_date: DateTime<Utc>,
+}
+
+impl From<SerializableSigningKey> for SigningKey {
+    fn from(value: SerializableSigningKey) -> Self {
+        SigningKey {
+            signing_key: Arc::new(RwLock::new(value.signing_key)),
+            key_id: value.key_id,
+            not_after_date: value.not_after_date,
+        }
+    }
+}
+
+impl TryFrom<SigningKey> for SerializableSigningKey {
+    type Error = AkdWatchError;
+
+    fn try_from(value: SigningKey) -> Result<Self, Self::Error> {
+        Ok(SerializableSigningKey {
+            signing_key: value
+                .signing_key
+                .read()
+                .map_err(|_| AkdWatchError::PoisonedSigningKey)?.clone(),
+            key_id: value.key_id,
+            not_after_date: value.not_after_date,
+        })
+    }
+}
+
+impl Serialize for SigningKey {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let serializable = SerializableSigningKey::try_from(self.clone())
+            .map_err(serde::ser::Error::custom)?;
+        serializable.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for SigningKey {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let serializable = SerializableSigningKey::deserialize(deserializer)?;
+        Ok(SigningKey::from(serializable))
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct VerifyingKey {
     pub verifying_key: ed25519_dalek::VerifyingKey,
     pub key_id: Uuid,

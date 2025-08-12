@@ -1,6 +1,9 @@
 use crate::{
     crypto::{SigningKey, VerifyingKey},
-    storage::signing_keys::{SigningKeyRepository, VerifyingKeyRepository},
+    storage::signing_keys::{
+        SigningKeyRepository, SigningKeyRepositoryError, VerifyingKeyRepository,
+        VerifyingKeyRepositoryError,
+    },
 };
 use chrono::Duration;
 use std::sync::{Arc, RwLock};
@@ -68,7 +71,10 @@ impl MockSigningKeyRepository {
 }
 
 impl SigningKeyRepository for MockSigningKeyRepository {
-    fn get_current_signing_key(&self) -> impl std::future::Future<Output = SigningKey> + Send {
+    fn get_current_signing_key(
+        &self,
+    ) -> impl std::future::Future<Output = Result<SigningKey, SigningKeyRepositoryError>> + Send
+    {
         let current_key = self.current_key.clone();
         let expired_keys = self.expired_keys.clone();
         let key_lifetime = self.key_lifetime;
@@ -90,11 +96,13 @@ impl SigningKeyRepository for MockSigningKeyRepository {
                 expired_keys.write().unwrap().push(expired_key);
             }
 
-            current_key_guard.clone()
+            Ok(current_key_guard.clone())
         }
     }
 
-    fn force_key_rotation(&self) -> impl std::future::Future<Output = Result<(), String>> + Send {
+    fn force_key_rotation(
+        &self,
+    ) -> impl std::future::Future<Output = Result<(), SigningKeyRepositoryError>> + Send {
         let current_key = self.current_key.clone();
         let expired_keys = self.expired_keys.clone();
         let key_lifetime = self.key_lifetime;
@@ -102,7 +110,9 @@ impl SigningKeyRepository for MockSigningKeyRepository {
 
         async move {
             if should_fail {
-                return Err("Mock failure for key rotation".to_string());
+                return Err(SigningKeyRepositoryError::Custom(
+                    "Mock failure for key rotation".to_string(),
+                ));
             }
 
             let mut current_key_guard = current_key.write().unwrap();
@@ -117,12 +127,14 @@ impl SigningKeyRepository for MockSigningKeyRepository {
         }
     }
 
-    fn verifying_key_repository(&self) -> impl VerifyingKeyRepository {
-        MockVerifyingKeyRepository::new(
+    fn verifying_key_repository(
+        &self,
+    ) -> Result<impl VerifyingKeyRepository, SigningKeyRepositoryError> {
+        Ok(MockVerifyingKeyRepository::new(
             self.current_key.clone(),
             self.expired_keys.clone(),
             self.should_fail.clone(),
-        )
+        ))
     }
 }
 
@@ -149,36 +161,34 @@ impl MockVerifyingKeyRepository {
 }
 
 impl VerifyingKeyRepository for MockVerifyingKeyRepository {
-    fn get_verifying_key(
+    async fn get_verifying_key(
         &self,
         key_id: Uuid,
-    ) -> impl std::future::Future<Output = Option<VerifyingKey>> + Send {
+    ) -> Result<Option<VerifyingKey>, VerifyingKeyRepositoryError> {
         let should_fail = *self.should_fail.read().unwrap();
         let current_key = self.current_key.clone();
         let expired_keys = self.expired_keys.clone();
 
-        async move {
-            if should_fail {
-                return None;
-            }
-
-            // Check current key
-            if let Ok(current_key) = current_key.read().unwrap().verifying_key() {
-                if current_key.key_id == key_id {
-                    return Some(current_key);
-                }
-            }
-
-            // Check expired keys
-            for expired_key in expired_keys.read().unwrap().iter() {
-                if let Ok(verifying_key) = expired_key.verifying_key() {
-                    if verifying_key.key_id == key_id {
-                        return Some(verifying_key);
-                    }
-                }
-            }
-
-            None
+        if should_fail {
+            return Ok(None);
         }
+
+        // Check current key
+        if let Ok(current_key) = current_key.read().unwrap().verifying_key() {
+            if current_key.key_id == key_id {
+                return Ok(Some(current_key));
+            }
+        }
+
+        // Check expired keys
+        for expired_key in expired_keys.read().unwrap().iter() {
+            if let Ok(verifying_key) = expired_key.verifying_key() {
+                if verifying_key.key_id == key_id {
+                    return Ok(Some(verifying_key));
+                }
+            }
+        }
+
+        Ok(None)
     }
 }

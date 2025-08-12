@@ -8,7 +8,7 @@ sleep_seconds = 30
 [signing]
 # Path to signing key file (required)
 # A verifying key file will be created at the same location with a .pub.json extension
-key_file = "/path/to/signing/keys.json"
+key_dir = "/path/to/signing/keys/"
 key_lifetime_seconds = 2592000  # 30 days in seconds. Optional, defaults to 30 days
 
 # Storage configuration - choose one of the following:
