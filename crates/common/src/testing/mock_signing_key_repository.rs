@@ -1,10 +1,10 @@
-use std::sync::{Arc, RwLock};
-use chrono::Duration;
-use uuid::Uuid;
 use crate::{
     crypto::{SigningKey, VerifyingKey},
-    storage::signing_key_repository::{SigningKeyRepository, VerifyingKeyRepository},
+    storage::signing_keys::{SigningKeyRepository, VerifyingKeyRepository},
 };
+use chrono::Duration;
+use std::sync::{Arc, RwLock};
+use uuid::Uuid;
 
 /// Mock signing key repository for testing
 #[derive(Clone, Debug)]
@@ -73,7 +73,7 @@ impl SigningKeyRepository for MockSigningKeyRepository {
         let expired_keys = self.expired_keys.clone();
         let key_lifetime = self.key_lifetime;
         let should_fail = *self.should_fail.read().unwrap();
-        
+
         async move {
             if should_fail {
                 // In a real implementation, this might return an error
@@ -81,11 +81,12 @@ impl SigningKeyRepository for MockSigningKeyRepository {
             }
 
             let mut current_key_guard = current_key.write().unwrap();
-            
+
             // Check if the current key is expired
             if current_key_guard.is_expired() {
                 // Move expired key to expired list
-                let expired_key = std::mem::replace(&mut *current_key_guard, SigningKey::generate(key_lifetime));
+                let expired_key =
+                    std::mem::replace(&mut *current_key_guard, SigningKey::generate(key_lifetime));
                 expired_keys.write().unwrap().push(expired_key);
             }
 
@@ -98,16 +99,17 @@ impl SigningKeyRepository for MockSigningKeyRepository {
         let expired_keys = self.expired_keys.clone();
         let key_lifetime = self.key_lifetime;
         let should_fail = *self.should_fail.read().unwrap();
-        
+
         async move {
             if should_fail {
                 return Err("Mock failure for key rotation".to_string());
             }
 
             let mut current_key_guard = current_key.write().unwrap();
-            
+
             // Expire the current key and move it to expired list
-            let mut expired_key = std::mem::replace(&mut *current_key_guard, SigningKey::generate(key_lifetime));
+            let mut expired_key =
+                std::mem::replace(&mut *current_key_guard, SigningKey::generate(key_lifetime));
             expired_key.expire();
             expired_keys.write().unwrap().push(expired_key);
 
@@ -147,11 +149,14 @@ impl MockVerifyingKeyRepository {
 }
 
 impl VerifyingKeyRepository for MockVerifyingKeyRepository {
-    fn get_verifying_key(&self, key_id: Uuid) -> impl std::future::Future<Output = Option<VerifyingKey>> + Send {
+    fn get_verifying_key(
+        &self,
+        key_id: Uuid,
+    ) -> impl std::future::Future<Output = Option<VerifyingKey>> + Send {
         let should_fail = *self.should_fail.read().unwrap();
         let current_key = self.current_key.clone();
         let expired_keys = self.expired_keys.clone();
-        
+
         async move {
             if should_fail {
                 return None;

@@ -5,7 +5,7 @@ use std::{
 
 use crate::{
     epoch_signature::EpochSignature,
-    storage::{SignatureStorage, SignatureStorageError},
+    storage::signatures::{SignatureStorage, SignatureStorageError},
 };
 
 #[derive(Clone, Debug)]

@@ -1,7 +1,11 @@
 use thiserror::Error;
 
 use crate::NamespaceInfo;
-use std::{collections::HashMap, fmt::Debug, sync::{Arc, RwLock}};
+use std::{
+    collections::HashMap,
+    fmt::Debug,
+    sync::{Arc, RwLock},
+};
 
 #[derive(Debug, Error)]
 pub enum NamespaceRepositoryError {
@@ -12,7 +16,10 @@ pub enum NamespaceRepositoryError {
 type Result<T> = std::result::Result<T, NamespaceRepositoryError>;
 
 pub trait NamespaceRepository: Clone + Send + Sync {
-    fn get_namespace_info(&self, name: &str) -> impl Future<Output = Result<Option<NamespaceInfo>>> + Send;
+    fn get_namespace_info(
+        &self,
+        name: &str,
+    ) -> impl Future<Output = Result<Option<NamespaceInfo>>> + Send;
     fn list_namespaces(&self) -> impl Future<Output = Result<Vec<NamespaceInfo>>> + Send;
     fn add_namespace(&mut self, info: NamespaceInfo) -> impl Future<Output = Result<()>> + Send;
     fn update_namespace(&mut self, info: NamespaceInfo) -> impl Future<Output = Result<()>> + Send;
@@ -33,10 +40,15 @@ impl InMemoryNamespaceRepository {
 }
 
 impl NamespaceRepository for InMemoryNamespaceRepository {
-    fn get_namespace_info(&self, name: &str) -> impl Future<Output = Result<Option<NamespaceInfo>>> + Send {
+    fn get_namespace_info(
+        &self,
+        name: &str,
+    ) -> impl Future<Output = Result<Option<NamespaceInfo>>> + Send {
         let namespaces = self.namespaces.clone();
         async move {
-            let namespaces = namespaces.read().map_err(|_| NamespaceRepositoryError::Custom("Failed to acquire read lock".to_string()))?;
+            let namespaces = namespaces.read().map_err(|_| {
+                NamespaceRepositoryError::Custom("Failed to acquire read lock".to_string())
+            })?;
             Ok(namespaces.get(name).cloned())
         }
     }
@@ -44,7 +56,9 @@ impl NamespaceRepository for InMemoryNamespaceRepository {
     fn list_namespaces(&self) -> impl Future<Output = Result<Vec<NamespaceInfo>>> + Send {
         let namespaces = self.namespaces.clone();
         async move {
-            let namespaces = namespaces.read().map_err(|_| NamespaceRepositoryError::Custom("Failed to acquire read lock".to_string()))?;
+            let namespaces = namespaces.read().map_err(|_| {
+                NamespaceRepositoryError::Custom("Failed to acquire read lock".to_string())
+            })?;
             Ok(namespaces.values().cloned().collect())
         }
     }
@@ -52,7 +66,9 @@ impl NamespaceRepository for InMemoryNamespaceRepository {
     fn add_namespace(&mut self, info: NamespaceInfo) -> impl Future<Output = Result<()>> + Send {
         let namespaces = self.namespaces.clone();
         async move {
-            let mut namespaces = namespaces.write().map_err(|_| NamespaceRepositoryError::Custom("Failed to acquire write lock".to_string()))?;
+            let mut namespaces = namespaces.write().map_err(|_| {
+                NamespaceRepositoryError::Custom("Failed to acquire write lock".to_string())
+            })?;
             namespaces.insert(info.name.clone(), info);
             Ok(())
         }
@@ -61,12 +77,17 @@ impl NamespaceRepository for InMemoryNamespaceRepository {
     fn update_namespace(&mut self, info: NamespaceInfo) -> impl Future<Output = Result<()>> + Send {
         let namespaces = self.namespaces.clone();
         async move {
-            let mut namespaces = namespaces.write().map_err(|_| NamespaceRepositoryError::Custom("Failed to acquire write lock".to_string()))?;
+            let mut namespaces = namespaces.write().map_err(|_| {
+                NamespaceRepositoryError::Custom("Failed to acquire write lock".to_string())
+            })?;
             if namespaces.contains_key(&info.name) {
                 namespaces.insert(info.name.clone(), info);
                 Ok(())
             } else {
-                Err(NamespaceRepositoryError::Custom(format!("Namespace '{}' does not exist", info.name)))
+                Err(NamespaceRepositoryError::Custom(format!(
+                    "Namespace '{}' does not exist",
+                    info.name
+                )))
             }
         }
     }
@@ -74,11 +95,16 @@ impl NamespaceRepository for InMemoryNamespaceRepository {
     fn remove_namespace(&mut self, name: &str) -> impl Future<Output = Result<()>> + Send {
         let namespaces = self.namespaces.clone();
         async move {
-            let mut namespaces = namespaces.write().map_err(|_| NamespaceRepositoryError::Custom("Failed to acquire write lock".to_string()))?;
+            let mut namespaces = namespaces.write().map_err(|_| {
+                NamespaceRepositoryError::Custom("Failed to acquire write lock".to_string())
+            })?;
             if namespaces.remove(name).is_some() {
                 Ok(())
             } else {
-                Err(NamespaceRepositoryError::Custom(format!("Namespace '{}' does not exist", name)))
+                Err(NamespaceRepositoryError::Custom(format!(
+                    "Namespace '{}' does not exist",
+                    name
+                )))
             }
         }
     }

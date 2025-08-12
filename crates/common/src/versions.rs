@@ -41,7 +41,6 @@ impl Default for Ciphersuite {
     }
 }
 
-
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(into = "u32")]
 #[serde(from = "u32")]
@@ -82,7 +81,7 @@ impl Epoch {
     pub fn new(epoch: u64) -> Self {
         Epoch(epoch)
     }
-    
+
     pub fn value(&self) -> &u64 {
         &self.0
     }

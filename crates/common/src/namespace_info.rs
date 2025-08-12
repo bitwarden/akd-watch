@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{akd_configurations::AkdConfiguration, Epoch};
+use crate::{Epoch, akd_configurations::AkdConfiguration};
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum NamespaceStatus {

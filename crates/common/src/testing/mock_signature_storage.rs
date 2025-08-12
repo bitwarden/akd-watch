@@ -1,5 +1,11 @@
-use std::{collections::HashMap, sync::{Arc, RwLock}};
-use crate::{storage::{SignatureStorage, SignatureStorageError}, EpochSignature};
+use crate::{
+    EpochSignature,
+    storage::signatures::{SignatureStorage, SignatureStorageError},
+};
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+};
 
 /// Mock signature storage for testing
 #[derive(Clone, Debug)]
@@ -55,7 +61,10 @@ impl MockSignatureStorage {
 }
 
 impl SignatureStorage for MockSignatureStorage {
-    fn has_signature(&self, epoch: &u64) -> impl std::future::Future<Output = Result<bool, SignatureStorageError>> + Send {
+    fn has_signature(
+        &self,
+        epoch: &u64,
+    ) -> impl std::future::Future<Output = Result<bool, SignatureStorageError>> + Send {
         let result = if *self.should_fail_get.read().unwrap() {
             // For has_signature, we don't really fail - just return false
             false
@@ -65,7 +74,11 @@ impl SignatureStorage for MockSignatureStorage {
         async move { Ok(result) }
     }
 
-    fn get_signature(&self, epoch: &u64) -> impl std::future::Future<Output = Result<Option<EpochSignature>, SignatureStorageError>> + Send {
+    fn get_signature(
+        &self,
+        epoch: &u64,
+    ) -> impl std::future::Future<Output = Result<Option<EpochSignature>, SignatureStorageError>> + Send
+    {
         let result = if *self.should_fail_get.read().unwrap() {
             None
         } else {
@@ -74,10 +87,14 @@ impl SignatureStorage for MockSignatureStorage {
         async move { Ok(result) }
     }
 
-    fn set_signature(&mut self, epoch: &u64, signature: EpochSignature) -> impl std::future::Future<Output = Result<(), SignatureStorageError>> + Send {
+    fn set_signature(
+        &mut self,
+        epoch: &u64,
+        signature: EpochSignature,
+    ) -> impl std::future::Future<Output = Result<(), SignatureStorageError>> + Send {
         if !*self.should_fail_set.read().unwrap() {
             self.signatures.write().unwrap().insert(*epoch, signature);
         }
-        async move {Ok(())}
+        async move { Ok(()) }
     }
 }

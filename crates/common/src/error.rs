@@ -18,10 +18,7 @@ pub enum AkdWatchError {
     #[error("Signature parse error: {0}")]
     SignatureParseError(#[from] ed25519_dalek::SignatureError),
     #[error("Signature length error: expected {expected}, got {actual}")]
-    SignatureLengthError {
-        expected: usize,
-        actual: usize,
-    },
+    SignatureLengthError { expected: usize, actual: usize },
     #[error("Signature verification failed")]
     SignatureVerificationFailed,
     #[error("poisoned signing key")]

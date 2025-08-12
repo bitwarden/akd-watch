@@ -1,19 +1,19 @@
-mod audit_blob_name;
-mod namespace_info;
-mod versions;
-mod error;
-mod epoch_signature;
-pub mod crypto;
-pub mod storage;
 pub mod akd_configurations;
 pub mod akd_storage_factory;
+mod audit_blob_name;
+pub mod crypto;
+mod epoch_signature;
+mod error;
+mod namespace_info;
+pub mod storage;
+mod versions;
 
+pub use akd_configurations::BitwardenV1Configuration;
 pub use audit_blob_name::SerializableAuditBlobName;
+pub use epoch_signature::EpochSignature;
+pub use error::AkdWatchError;
 pub use namespace_info::*;
 pub use versions::*;
-pub use error::AkdWatchError;
-pub use epoch_signature::EpochSignature;
-pub use akd_configurations::BitwardenV1Configuration;
 
 #[cfg(test)]
 pub use akd_configurations::TestAkdConfiguration;

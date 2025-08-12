@@ -7,8 +7,8 @@ use akd_watch_common::{
     akd_configurations::verify_consecutive_append_only,
     akd_storage_factory::AkdStorageFactory,
     storage::{
-        AkdStorage, SignatureStorage, namespace_repository::NamespaceRepository,
-        signing_key_repository::SigningKeyRepository,
+        AkdStorage, namespace_repository::NamespaceRepository, signatures::SignatureStorage,
+        signing_keys::SigningKeyRepository,
     },
 };
 use anyhow::Result;
@@ -206,12 +206,11 @@ where
         let akd = AkdStorageFactory::create_storage(&namespace_info);
 
         // get the next epoch to audit
-        let mut next_epoch =
-            if let Some(last_verified_epoch) = namespace_info.last_verified_epoch {
-                last_verified_epoch.next()
-            } else {
-                namespace_info.starting_epoch
-            };
+        let mut next_epoch = if let Some(last_verified_epoch) = namespace_info.last_verified_epoch {
+            last_verified_epoch.next()
+        } else {
+            namespace_info.starting_epoch
+        };
 
         // Check if the namespace has a proof for the next epoch
         let mut result = Vec::new();
@@ -585,7 +584,10 @@ mod tests {
             &signing_key,
         )
         .unwrap();
-        signature_storage.set_signature(&1, signature).await.unwrap();
+        signature_storage
+            .set_signature(&1, signature)
+            .await
+            .unwrap();
 
         let auditor = NamespaceAuditor::new(
             namespace_info,
@@ -746,7 +748,10 @@ mod tests {
         let result = auditor.sign_blob(&blob_name, &namespace_info).await;
         assert!(result.is_ok(), "Signing blob should succeed");
         // Check that the signature was stored
-        let signature = signature_storage.get_signature(&blob_name.epoch).await.unwrap();
+        let signature = signature_storage
+            .get_signature(&blob_name.epoch)
+            .await
+            .unwrap();
         assert!(
             signature.is_some(),
             "Signature should be stored after signing"

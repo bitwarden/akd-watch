@@ -1,5 +1,11 @@
-use std::{collections::HashMap, sync::{Arc, RwLock}};
-use crate::{NamespaceInfo, storage::namespace_repository::{NamespaceRepository, NamespaceRepositoryError}};
+use crate::{
+    NamespaceInfo,
+    storage::namespace_repository::{NamespaceRepository, NamespaceRepositoryError},
+};
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+};
 
 /// Mock namespace repository for testing
 #[derive(Clone, Debug)]
@@ -18,7 +24,10 @@ impl MockNamespaceRepository {
 
     /// Add a namespace for testing
     pub fn add_test_namespace(&mut self, namespace: NamespaceInfo) {
-        self.namespaces.write().unwrap().insert(namespace.name.clone(), namespace);
+        self.namespaces
+            .write()
+            .unwrap()
+            .insert(namespace.name.clone(), namespace);
     }
 
     /// Remove a namespace for testing
@@ -38,40 +47,56 @@ impl MockNamespaceRepository {
 }
 
 impl NamespaceRepository for MockNamespaceRepository {
-    fn get_namespace_info(&self, name: &str) -> impl std::future::Future<Output = Result<Option<NamespaceInfo>, NamespaceRepositoryError>> + Send {
+    fn get_namespace_info(
+        &self,
+        name: &str,
+    ) -> impl std::future::Future<Output = Result<Option<NamespaceInfo>, NamespaceRepositoryError>> + Send
+    {
         let should_fail = *self.should_fail.read().unwrap();
         let result = if should_fail {
             Err(NamespaceRepositoryError::Custom("Mock failure".to_string()))
         } else {
             self.namespaces
                 .read()
-                .map_err(|_| NamespaceRepositoryError::Custom("Failed to acquire read lock".to_string()))
+                .map_err(|_| {
+                    NamespaceRepositoryError::Custom("Failed to acquire read lock".to_string())
+                })
                 .map(|namespaces| namespaces.get(name).cloned())
         };
         async move { result }
     }
 
-    fn list_namespaces(&self) -> impl std::future::Future<Output = Result<Vec<NamespaceInfo>, NamespaceRepositoryError>> + Send {
+    fn list_namespaces(
+        &self,
+    ) -> impl std::future::Future<Output = Result<Vec<NamespaceInfo>, NamespaceRepositoryError>> + Send
+    {
         let should_fail = *self.should_fail.read().unwrap();
         let result = if should_fail {
             Err(NamespaceRepositoryError::Custom("Mock failure".to_string()))
         } else {
             self.namespaces
                 .read()
-                .map_err(|_| NamespaceRepositoryError::Custom("Failed to acquire read lock".to_string()))
+                .map_err(|_| {
+                    NamespaceRepositoryError::Custom("Failed to acquire read lock".to_string())
+                })
                 .map(|namespaces| namespaces.values().cloned().collect())
         };
         async move { result }
     }
 
-    fn add_namespace(&mut self, info: NamespaceInfo) -> impl std::future::Future<Output = Result<(), NamespaceRepositoryError>> + Send {
+    fn add_namespace(
+        &mut self,
+        info: NamespaceInfo,
+    ) -> impl std::future::Future<Output = Result<(), NamespaceRepositoryError>> + Send {
         let should_fail = *self.should_fail.read().unwrap();
         let result = if should_fail {
             Err(NamespaceRepositoryError::Custom("Mock failure".to_string()))
         } else {
             self.namespaces
                 .write()
-                .map_err(|_| NamespaceRepositoryError::Custom("Failed to acquire write lock".to_string()))
+                .map_err(|_| {
+                    NamespaceRepositoryError::Custom("Failed to acquire write lock".to_string())
+                })
                 .map(|mut namespaces| {
                     namespaces.insert(info.name.clone(), info);
                 })
@@ -79,14 +104,19 @@ impl NamespaceRepository for MockNamespaceRepository {
         async move { result }
     }
 
-    fn update_namespace(&mut self, info: NamespaceInfo) -> impl std::future::Future<Output = Result<(), NamespaceRepositoryError>> + Send {
+    fn update_namespace(
+        &mut self,
+        info: NamespaceInfo,
+    ) -> impl std::future::Future<Output = Result<(), NamespaceRepositoryError>> + Send {
         let should_fail = *self.should_fail.read().unwrap();
         let result = if should_fail {
             Err(NamespaceRepositoryError::Custom("Mock failure".to_string()))
         } else {
             self.namespaces
                 .write()
-                .map_err(|_| NamespaceRepositoryError::Custom("Failed to acquire write lock".to_string()))
+                .map_err(|_| {
+                    NamespaceRepositoryError::Custom("Failed to acquire write lock".to_string())
+                })
                 .map(|mut namespaces| {
                     namespaces.insert(info.name.clone(), info);
                 })
@@ -94,7 +124,10 @@ impl NamespaceRepository for MockNamespaceRepository {
         async move { result }
     }
 
-    fn remove_namespace(&mut self, name: &str) -> impl std::future::Future<Output = Result<(), NamespaceRepositoryError>> + Send {
+    fn remove_namespace(
+        &mut self,
+        name: &str,
+    ) -> impl std::future::Future<Output = Result<(), NamespaceRepositoryError>> + Send {
         let name = name.to_string();
         let should_fail = *self.should_fail.read().unwrap();
         let result = if should_fail {
@@ -102,7 +135,9 @@ impl NamespaceRepository for MockNamespaceRepository {
         } else {
             self.namespaces
                 .write()
-                .map_err(|_| NamespaceRepositoryError::Custom("Failed to acquire write lock".to_string()))
+                .map_err(|_| {
+                    NamespaceRepositoryError::Custom("Failed to acquire write lock".to_string())
+                })
                 .map(|mut namespaces| {
                     namespaces.remove(&name);
                 })

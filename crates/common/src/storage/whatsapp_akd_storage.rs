@@ -1,8 +1,8 @@
 use std::fmt::Display;
 
-use akd::{local_auditing::{AuditBlob, AuditBlobName}};
-use quick_xml::events::Event;
+use akd::local_auditing::{AuditBlob, AuditBlobName};
 use quick_xml::Reader;
+use quick_xml::events::Event;
 use reqwest::header::CACHE_CONTROL;
 use tracing::instrument;
 
@@ -38,11 +38,16 @@ impl WhatsAppAkdStorage {
         // make a client with no chache
         let client = reqwest::Client::new();
         // TODO: we're getting failures pulling proofs taht exist for minutes. Need to figure out why we're so far behind
-        let resp = client.get(url).header(CACHE_CONTROL, "no-store").send().await
+        let resp = client
+            .get(url)
+            .header(CACHE_CONTROL, "no-store")
+            .send()
+            .await
             .map_err(|e| AkdStorageError::Custom(format!("Request failed: {}", e)))?
-            .bytes().await
+            .bytes()
+            .await
             .map_err(|e| AkdStorageError::Custom(format!("Failed to read response: {}", e)))?;
-        
+
         let mut reader = Reader::from_reader(resp.as_ref());
         let mut buf = Vec::new();
 
@@ -51,8 +56,9 @@ impl WhatsAppAkdStorage {
                 Ok(Event::Start(ref e)) if e.name().as_ref() == b"Key" => {
                     // Read the key content
                     if let Ok(Event::Text(e)) = reader.read_event_into(&mut buf) {
-                        let key_text = std::str::from_utf8(e.as_ref())
-                            .map_err(|e| AkdStorageError::Custom(format!("UTF-8 parsing error: {}", e)))?;
+                        let key_text = std::str::from_utf8(e.as_ref()).map_err(|e| {
+                            AkdStorageError::Custom(format!("UTF-8 parsing error: {}", e))
+                        })?;
                         return Ok(Some(key_text.to_string()));
                     }
                 }
@@ -70,7 +76,8 @@ impl WhatsAppAkdStorage {
 impl AkdStorage for WhatsAppAkdStorage {
     #[instrument(level = "info", skip_all, fields(base_url = self.base_url, epoch = epoch))]
     async fn has_proof(&self, epoch: &u64) -> bool {
-        self.get_key_for_epoch(epoch).await
+        self.get_key_for_epoch(epoch)
+            .await
             .map(|key| key.is_some())
             .unwrap_or(false)
     }
@@ -78,13 +85,18 @@ impl AkdStorage for WhatsAppAkdStorage {
     #[instrument(level = "info", skip_all, fields(base_url = self.base_url, epoch = name.epoch))]
     async fn get_proof(&self, name: &AuditBlobName) -> Result<AuditBlob, AkdStorageError> {
         let url = format!("{}/{}", self.base_url, name.to_string());
-        let resp = reqwest::get(url).await
+        let resp = reqwest::get(url)
+            .await
             .map_err(|e| AkdStorageError::Custom(format!("Request failed: {}", e)))?
-            .bytes().await
+            .bytes()
+            .await
             .map_err(|e| AkdStorageError::Custom(format!("Failed to read response: {}", e)))?;
         let data = resp.to_vec();
-    
-        Ok(AuditBlob { data, name: name.clone() })
+
+        Ok(AuditBlob {
+            data,
+            name: name.clone(),
+        })
     }
 
     #[instrument(level = "info", skip_all, fields(base_url = self.base_url, epoch = epoch))]
@@ -92,7 +104,10 @@ impl AkdStorage for WhatsAppAkdStorage {
         match self.get_key_for_epoch(epoch).await? {
             Some(key) => AuditBlobName::try_from(key.as_str())
                 .map_err(|_| AkdStorageError::Custom("Invalid blob name format".to_string())),
-            None => Err(AkdStorageError::Custom(format!("No proof found for epoch {}", epoch))),
+            None => Err(AkdStorageError::Custom(format!(
+                "No proof found for epoch {}",
+                epoch
+            ))),
         }
     }
 }
@@ -106,7 +121,8 @@ mod tests {
     const TEST_EPOCH: &u64 = &1381400;
 
     fn create_xml_response_with_key(key: &str) -> String {
-        format!(r#"<?xml version="1.0" encoding="UTF-8"?>
+        format!(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
 <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
   <Name>kt-audit-proofs-integration-v2</Name>
   <Prefix></Prefix>
@@ -120,7 +136,9 @@ mod tests {
     <Size>1024</Size>
     <StorageClass>STANDARD</StorageClass>
   </Contents>
-</ListBucketResult>"#, key)
+</ListBucketResult>"#,
+            key
+        )
     }
 
     fn create_empty_xml_response() -> String {
@@ -131,7 +149,8 @@ mod tests {
   <Marker></Marker>
   <MaxKeys>1000</MaxKeys>
   <IsTruncated>false</IsTruncated>
-</ListBucketResult>"#.to_string()
+</ListBucketResult>"#
+            .to_string()
     }
 
     #[tokio::test]
@@ -146,7 +165,7 @@ mod tests {
 
         let storage = WhatsAppAkdStorage::new_with_url(server.url());
         let result = storage.has_proof(TEST_EPOCH).await;
-        
+
         mock.assert_async().await;
         assert!(result, "Epoch should exist");
     }
@@ -164,7 +183,7 @@ mod tests {
 
         let storage = WhatsAppAkdStorage::new_with_url(server.url());
         let result = storage.has_proof(nonexistent_epoch).await;
-        
+
         mock.assert_async().await;
         assert!(!result, "Nonexistent epoch should not exist");
     }
@@ -184,7 +203,7 @@ mod tests {
             Ok(Some(key)) => {
                 mock.assert_async().await;
                 assert_eq!(key, EPOCH_KEY, "Key should match expected value");
-            },
+            }
             Ok(None) => panic!("Key should be present"),
             Err(e) => panic!("Error checking epoch: {}", e),
         }
@@ -206,7 +225,7 @@ mod tests {
             Ok(None) => {
                 mock.assert_async().await;
                 // Expected - no key found
-            },
+            }
             Ok(Some(_)) => panic!("Should not find key for nonexistent epoch"),
             Err(e) => panic!("Error checking epoch: {}", e),
         }
@@ -226,8 +245,12 @@ mod tests {
         match storage.get_proof_name(TEST_EPOCH).await {
             Ok(name) => {
                 mock.assert_async().await;
-                assert_eq!(name.to_string(), EPOCH_KEY, "Proof name should match expected key");
-            },
+                assert_eq!(
+                    name.to_string(),
+                    EPOCH_KEY,
+                    "Proof name should match expected key"
+                );
+            }
             Err(e) => panic!("Error getting proof name: {}", e),
         }
     }
@@ -249,9 +272,13 @@ mod tests {
             Err(e) => {
                 mock.assert_async().await;
                 let error_message = format!("{}", e);
-                assert!(error_message.contains(&format!("No proof found for epoch {}", nonexistent_epoch)), 
-                        "Error message should indicate epoch not found: {}", error_message);
-            },
+                assert!(
+                    error_message
+                        .contains(&format!("No proof found for epoch {}", nonexistent_epoch)),
+                    "Error message should indicate epoch not found: {}",
+                    error_message
+                );
+            }
         }
     }
 }

@@ -1,6 +1,7 @@
 use crate::{
+    NamespaceInfo,
     akd_configurations::AkdConfiguration,
-    storage::{whatsapp_akd_storage::WhatsAppAkdStorage, AkdStorage}, NamespaceInfo,
+    storage::{AkdStorage, whatsapp_akd_storage::WhatsAppAkdStorage},
 };
 
 #[cfg(any(test, feature = "testing"))]
@@ -34,7 +35,10 @@ impl AkdStorage for AkdStorageImpl {
         }
     }
 
-    async fn get_proof_name(&self, epoch: &u64) -> Result<akd::local_auditing::AuditBlobName, crate::storage::AkdStorageError> {
+    async fn get_proof_name(
+        &self,
+        epoch: &u64,
+    ) -> Result<akd::local_auditing::AuditBlobName, crate::storage::AkdStorageError> {
         match self {
             AkdStorageImpl::WhatsApp(storage) => storage.get_proof_name(epoch).await,
             #[cfg(any(test, feature = "testing"))]
@@ -42,7 +46,10 @@ impl AkdStorage for AkdStorageImpl {
         }
     }
 
-    async fn get_proof(&self, name: &akd::local_auditing::AuditBlobName) -> Result<akd::local_auditing::AuditBlob, crate::storage::AkdStorageError> {
+    async fn get_proof(
+        &self,
+        name: &akd::local_auditing::AuditBlobName,
+    ) -> Result<akd::local_auditing::AuditBlob, crate::storage::AkdStorageError> {
         match self {
             AkdStorageImpl::WhatsApp(storage) => storage.get_proof(name).await,
             #[cfg(any(test, feature = "testing"))]
@@ -56,12 +63,17 @@ pub struct AkdStorageFactory;
 
 impl AkdStorageFactory {
     /// Create an AKD storage implementation based on the given configuration
-pub fn create_storage(namespace_info: &NamespaceInfo) -> AkdStorageImpl {
+    pub fn create_storage(namespace_info: &NamespaceInfo) -> AkdStorageImpl {
         match namespace_info.configuration {
-            AkdConfiguration::WhatsAppV1Configuration => AkdStorageImpl::WhatsApp(WhatsAppAkdStorage::new()),
+            AkdConfiguration::WhatsAppV1Configuration => {
+                AkdStorageImpl::WhatsApp(WhatsAppAkdStorage::new())
+            }
             #[cfg(any(test, feature = "testing"))]
             AkdConfiguration::TestConfiguration => AkdStorageImpl::Test(TestAkdStorage::new()),
-            _ => todo!("Unsupported configuration: {:?}", namespace_info.configuration),
+            _ => todo!(
+                "Unsupported configuration: {:?}",
+                namespace_info.configuration
+            ),
         }
     }
 }
@@ -88,7 +100,7 @@ mod tests {
 
     #[test]
     fn test_factory_creates_test_storage() {
-        let namespace =         NamespaceInfo {
+        let namespace = NamespaceInfo {
             name: "test".to_string(),
             configuration: AkdConfiguration::TestConfiguration,
             log_directory: "https://example.com/".to_string(),

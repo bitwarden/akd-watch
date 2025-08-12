@@ -10,9 +10,7 @@ pub struct ServerConfiguration {
 }
 
 pub async fn handle_info() -> Json<ServerConfiguration> {
-    Json(ServerConfiguration {
-        keys: vec![],
-    }.into())
+    Json(ServerConfiguration { keys: vec![] }.into())
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]

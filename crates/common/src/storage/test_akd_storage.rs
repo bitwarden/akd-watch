@@ -10,7 +10,6 @@ use akd::local_auditing::{AuditBlob, AuditBlobName};
 
 use crate::storage::{AkdStorage, AkdStorageError};
 
-
 /// Test-only AKD storage implementation that stores proofs in memory.
 /// This allows for testing without relying on external services.
 ///
@@ -65,7 +64,16 @@ impl AkdStorage for TestAkdStorage {
         if self.has_proof(&name.epoch).await {
             use akd::SingleAppendOnlyProof;
 
-            Ok(AuditBlob::new(Self::hash(name.epoch), Self::hash(name.epoch), name.epoch, &SingleAppendOnlyProof{inserted: vec![], unchanged_nodes: vec![]}).map_err(|_| AkdStorageError::Custom("Failed to create empty proof".to_string()))?)
+            Ok(AuditBlob::new(
+                Self::hash(name.epoch),
+                Self::hash(name.epoch),
+                name.epoch,
+                &SingleAppendOnlyProof {
+                    inserted: vec![],
+                    unchanged_nodes: vec![],
+                },
+            )
+            .map_err(|_| AkdStorageError::Custom("Failed to create empty proof".to_string()))?)
         } else {
             Err(AkdStorageError::Custom(format!(
                 "No proof found for blob name: {}",

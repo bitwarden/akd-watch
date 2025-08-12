@@ -1,5 +1,8 @@
 use akd_watch_common::AkdWatchError;
-use axum::{response::{IntoResponse, Response}, http::StatusCode};
+use axum::{
+    http::StatusCode,
+    response::{IntoResponse, Response},
+};
 use thiserror::Error;
 
 #[derive(Debug, Error)]

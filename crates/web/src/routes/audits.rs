@@ -1,7 +1,7 @@
+use crate::error::ApiError;
 use akd_watch_common::{AuditVersion, Ciphersuite, Epoch};
 use axum::Json;
 use serde::{Deserialize, Serialize};
-use crate::error::ApiError;
 
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
 pub struct SignatureResponse {

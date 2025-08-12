@@ -2,24 +2,29 @@ use anyhow::Result;
 use tracing::{error, info, trace};
 use tracing_subscriber;
 
-mod error;
-mod config;
 mod auditor_app;
+mod config;
+mod error;
 mod namespace_auditor;
 
-use config::AuditorConfig;
 use auditor_app::AuditorApp;
+use config::AuditorConfig;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    tracing_subscriber::fmt().with_max_level(tracing::Level::TRACE).init();
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::TRACE)
+        .init();
 
     trace!("Starting auditor application");
 
     let config = AuditorConfig::load()
         .map_err(|e| anyhow::anyhow!("Failed to load configuration: {}", e))?;
-    
-    info!("Starting auditor with {} namespaces", config.namespaces.len());
+
+    info!(
+        "Starting auditor with {} namespaces",
+        config.namespaces.len()
+    );
 
     let app = AuditorApp::from_config(config).await?;
 
@@ -42,5 +47,3 @@ async fn main() -> Result<()> {
 
     Ok(())
 }
-
-

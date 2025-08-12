@@ -22,7 +22,11 @@ impl SigningKey {
         Arc::clone(&self.signing_key)
     }
 
-    pub fn new(signing_key: ed25519_dalek::SigningKey, key_id: Uuid, not_after_date: DateTime<Utc>) -> Self {
+    pub fn new(
+        signing_key: ed25519_dalek::SigningKey,
+        key_id: Uuid,
+        not_after_date: DateTime<Utc>,
+    ) -> Self {
         Self {
             signing_key: Arc::new(RwLock::new(signing_key)),
             key_id,

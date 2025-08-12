@@ -1,4 +1,4 @@
-use akd::{errors::AkdError, DomainLabel, WhatsAppV1Configuration};
+use akd::{DomainLabel, WhatsAppV1Configuration, errors::AkdError};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -44,14 +44,23 @@ pub async fn verify_consecutive_append_only(
 ) -> Result<(), AkdError> {
     match configuration {
         AkdConfiguration::WhatsAppV1Configuration => {
-            akd::auditor::verify_consecutive_append_only::<WhatsAppV1Configuration>(proof, start_hash, end_hash, end_epoch).await
+            akd::auditor::verify_consecutive_append_only::<WhatsAppV1Configuration>(
+                proof, start_hash, end_hash, end_epoch,
+            )
+            .await
         }
         AkdConfiguration::BitwardenV1Configuration => {
-            akd::auditor::verify_consecutive_append_only::<BitwardenV1Configuration>(proof, start_hash, end_hash, end_epoch).await
+            akd::auditor::verify_consecutive_append_only::<BitwardenV1Configuration>(
+                proof, start_hash, end_hash, end_epoch,
+            )
+            .await
         }
         #[cfg(any(test, feature = "testing"))]
         AkdConfiguration::TestConfiguration => {
-            akd::auditor::verify_consecutive_append_only::<TestAkdConfiguration>(proof, start_hash, end_hash, end_epoch).await
+            akd::auditor::verify_consecutive_append_only::<TestAkdConfiguration>(
+                proof, start_hash, end_hash, end_epoch,
+            )
+            .await
         }
     }
 }
