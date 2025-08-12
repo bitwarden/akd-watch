@@ -33,7 +33,7 @@ impl Display for WhatsAppAkdStorage {
 }
 
 impl WhatsAppAkdStorage {
-    async fn get_key_for_epoch(&self, epoch: u64) -> Result<Option<String>, AkdStorageError> {
+    async fn get_key_for_epoch(&self, epoch: &u64) -> Result<Option<String>, AkdStorageError> {
         let url = format!("{}/?list-type=2&prefix={}/", self.base_url, epoch);
         // make a client with no chache
         let client = reqwest::Client::new();
@@ -69,7 +69,7 @@ impl WhatsAppAkdStorage {
 
 impl AkdStorage for WhatsAppAkdStorage {
     #[instrument(level = "info", skip_all, fields(base_url = self.base_url, epoch = epoch))]
-    async fn has_proof(&self, epoch: u64) -> bool {
+    async fn has_proof(&self, epoch: &u64) -> bool {
         self.get_key_for_epoch(epoch).await
             .map(|key| key.is_some())
             .unwrap_or(false)
@@ -88,7 +88,7 @@ impl AkdStorage for WhatsAppAkdStorage {
     }
 
     #[instrument(level = "info", skip_all, fields(base_url = self.base_url, epoch = epoch))]
-    async fn get_proof_name(&self, epoch: u64) -> Result<AuditBlobName, AkdStorageError> {
+    async fn get_proof_name(&self, epoch: &u64) -> Result<AuditBlobName, AkdStorageError> {
         match self.get_key_for_epoch(epoch).await? {
             Some(key) => AuditBlobName::try_from(key.as_str())
                 .map_err(|_| AkdStorageError::Custom("Invalid blob name format".to_string())),
@@ -103,7 +103,7 @@ mod tests {
     use mockito;
 
     const EPOCH_KEY: &str = "1381400/6a05c589fb2c47aed2d03a731974c7b8ddedfc11aa504f003d60b284f97ef78f/2a60babcf966b100f71c13f76e708bf84ba12d777a7d90a0b8587c56f9bf4016";
-    const TEST_EPOCH: u64 = 1381400;
+    const TEST_EPOCH: &u64 = &1381400;
 
     fn create_xml_response_with_key(key: &str) -> String {
         format!(r#"<?xml version="1.0" encoding="UTF-8"?>
@@ -154,7 +154,7 @@ mod tests {
     #[tokio::test]
     async fn test_has_proof_nonexistent_epoch() {
         let mut server = mockito::Server::new_async().await;
-        let nonexistent_epoch = 999999999999u64;
+        let nonexistent_epoch = &999999999999u64;
         let mock = server
             .mock("GET", "/?list-type=2&prefix=999999999999/")
             .with_status(200)
@@ -193,7 +193,7 @@ mod tests {
     #[tokio::test]
     async fn test_get_key_for_epoch_nonexistent() {
         let mut server = mockito::Server::new_async().await;
-        let nonexistent_epoch = 999999999999u64;
+        let nonexistent_epoch = &999999999999u64;
         let mock = server
             .mock("GET", "/?list-type=2&prefix=999999999999/")
             .with_status(200)
@@ -235,7 +235,7 @@ mod tests {
     #[tokio::test]
     async fn test_get_proof_name_nonexistent() {
         let mut server = mockito::Server::new_async().await;
-        let nonexistent_epoch = 999999999999u64;
+        let nonexistent_epoch = &999999999999u64;
         let mock = server
             .mock("GET", "/?list-type=2&prefix=999999999999/")
             .with_status(200)

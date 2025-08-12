@@ -111,6 +111,10 @@ impl EpochSignature {
         }
     }
 
+    pub fn digest_hex(&self) -> String {
+        hex::encode(self.digest())
+    }
+
     pub fn epoch_root_hash(&self) -> Result<[u8; 32], AkdWatchError> {
         match self {
             EpochSignature::V1(signature) => signature

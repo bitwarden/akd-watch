@@ -1,30 +1,56 @@
-use std::{collections::HashMap, sync::{Arc, RwLock}};
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+};
 
-use crate::{epoch_signature::EpochSignature, storage::SignatureStorage};
+use crate::{
+    epoch_signature::EpochSignature,
+    storage::{SignatureStorage, SignatureStorageError},
+};
 
 #[derive(Clone, Debug)]
-pub struct InMemoryStorage {
+pub struct InMemorySignatureStorage {
     signatures: Arc<RwLock<HashMap<u64, EpochSignature>>>,
 }
 
-impl InMemoryStorage {
+impl InMemorySignatureStorage {
     pub fn new() -> Self {
-        InMemoryStorage {
+        InMemorySignatureStorage {
             signatures: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 }
 
-impl SignatureStorage for InMemoryStorage {
-    async fn has_signature(&self, epoch: &u64) -> bool {
-        let signatures = self.signatures.read().unwrap();
-        signatures.contains_key(epoch)
+impl SignatureStorage for InMemorySignatureStorage {
+    async fn has_signature(&self, epoch: &u64) -> Result<bool, SignatureStorageError> {
+        let signatures = self
+            .signatures
+            .read()
+            .map_err(|e| SignatureStorageError::Custom(e.to_string()))?;
+        Ok(signatures.contains_key(epoch))
     }
-    async fn get_signature(&self, epoch: &u64) -> Option<EpochSignature> {
-        self.signatures.read().unwrap().get(epoch).cloned()
+    async fn get_signature(
+        &self,
+        epoch: &u64,
+    ) -> Result<Option<EpochSignature>, SignatureStorageError> {
+        let result = self
+            .signatures
+            .read()
+            .map_err(|e| SignatureStorageError::Custom(e.to_string()))?
+            .get(epoch)
+            .cloned();
+        Ok(result)
     }
 
-    async fn set_signature(&mut self, epoch: u64, signature: EpochSignature) {
-        self.signatures.write().unwrap().insert(epoch, signature);
+    async fn set_signature(
+        &mut self,
+        epoch: &u64,
+        signature: EpochSignature,
+    ) -> Result<(), SignatureStorageError> {
+        self.signatures
+            .write()
+            .map_err(|e| SignatureStorageError::Custom(e.to_string()))?
+            .insert(*epoch, signature);
+        Ok(())
     }
 }

@@ -83,8 +83,8 @@ impl Epoch {
         Epoch(epoch)
     }
     
-    pub fn value(&self) -> u64 {
-        self.0
+    pub fn value(&self) -> &u64 {
+        &self.0
     }
 
     pub fn next(&self) -> Self {

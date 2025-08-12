@@ -1,5 +1,5 @@
 use std::{collections::HashMap, sync::{Arc, RwLock}};
-use crate::{EpochSignature, storage::SignatureStorage};
+use crate::{storage::{SignatureStorage, SignatureStorageError}, EpochSignature};
 
 /// Mock signature storage for testing
 #[derive(Clone, Debug)]
@@ -55,29 +55,29 @@ impl MockSignatureStorage {
 }
 
 impl SignatureStorage for MockSignatureStorage {
-    fn has_signature(&self, epoch: &u64) -> impl std::future::Future<Output = bool> + Send {
+    fn has_signature(&self, epoch: &u64) -> impl std::future::Future<Output = Result<bool, SignatureStorageError>> + Send {
         let result = if *self.should_fail_get.read().unwrap() {
             // For has_signature, we don't really fail - just return false
             false
         } else {
             self.signatures.read().unwrap().contains_key(epoch)
         };
-        async move { result }
+        async move { Ok(result) }
     }
 
-    fn get_signature(&self, epoch: &u64) -> impl std::future::Future<Output = Option<EpochSignature>> + Send {
+    fn get_signature(&self, epoch: &u64) -> impl std::future::Future<Output = Result<Option<EpochSignature>, SignatureStorageError>> + Send {
         let result = if *self.should_fail_get.read().unwrap() {
             None
         } else {
             self.signatures.read().unwrap().get(epoch).cloned()
         };
-        async move { result }
+        async move { Ok(result) }
     }
 
-    fn set_signature(&mut self, epoch: u64, signature: EpochSignature) -> impl std::future::Future<Output = ()> + Send {
+    fn set_signature(&mut self, epoch: &u64, signature: EpochSignature) -> impl std::future::Future<Output = Result<(), SignatureStorageError>> + Send {
         if !*self.should_fail_set.read().unwrap() {
-            self.signatures.write().unwrap().insert(epoch, signature);
+            self.signatures.write().unwrap().insert(*epoch, signature);
         }
-        async move {}
+        async move {Ok(())}
     }
 }

@@ -7,7 +7,7 @@ use akd_watch_common::{
     storage::{
         namespace_repository::{InMemoryNamespaceRepository, NamespaceRepository},
         signing_key_repository::{InMemorySigningKeyRepository, SigningKeyRepository},
-        InMemoryStorage, SignatureStorage,
+        InMemorySignatureStorage, SignatureStorage,
     },
 };
 use anyhow::{Context, Result};
@@ -160,12 +160,12 @@ where
         Ok(namespace_repository)
     }
 
-    async fn init_signature_storage(config: &AuditorConfig) -> Result<HashMap<String, InMemoryStorage>> {
+    async fn init_signature_storage(config: &AuditorConfig) -> Result<HashMap<String, InMemorySignatureStorage>> {
         let mut storage_map = HashMap::new();
         
         for ns_config in &config.namespaces {
             // TODO: Could configure storage type based on config in the future
-            storage_map.insert(ns_config.name.clone(), InMemoryStorage::new());
+            storage_map.insert(ns_config.name.clone(), InMemorySignatureStorage::new());
         }
         
         Ok(storage_map)

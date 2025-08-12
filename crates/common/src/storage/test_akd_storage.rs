@@ -57,12 +57,12 @@ impl Display for TestAkdStorage {
 }
 
 impl AkdStorage for TestAkdStorage {
-    async fn has_proof(&self, epoch: u64) -> bool {
-        epoch > 0 && epoch <= 100
+    async fn has_proof(&self, epoch: &u64) -> bool {
+        epoch > &0 && epoch <= &100
     }
 
     async fn get_proof(&self, name: &AuditBlobName) -> Result<AuditBlob, AkdStorageError> {
-        if self.has_proof(name.epoch).await {
+        if self.has_proof(&name.epoch).await {
             use akd::SingleAppendOnlyProof;
 
             Ok(AuditBlob::new(Self::hash(name.epoch), Self::hash(name.epoch), name.epoch, &SingleAppendOnlyProof{inserted: vec![], unchanged_nodes: vec![]}).map_err(|_| AkdStorageError::Custom("Failed to create empty proof".to_string()))?)
@@ -74,10 +74,10 @@ impl AkdStorage for TestAkdStorage {
         }
     }
 
-    async fn get_proof_name(&self, epoch: u64) -> Result<AuditBlobName, AkdStorageError> {
+    async fn get_proof_name(&self, epoch: &u64) -> Result<AuditBlobName, AkdStorageError> {
         if self.has_proof(epoch).await {
             AuditBlobName::try_from(
-                format!("{}/{}/{}", epoch, Self::hex(epoch), Self::hex(epoch)).as_str(),
+                format!("{}/{}/{}", epoch, Self::hex(*epoch), Self::hex(*epoch)).as_str(),
             )
             .map_err(|_| AkdStorageError::Custom("Invalid blob name format".to_string()))
         } else {
@@ -96,15 +96,15 @@ mod tests {
     #[tokio::test]
     async fn test_has_proof() {
         let storage = TestAkdStorage::new();
-        assert!(storage.has_proof(1).await);
-        assert!(!storage.has_proof(0).await);
-        assert!(!storage.has_proof(101).await);
+        assert!(storage.has_proof(&1).await);
+        assert!(!storage.has_proof(&0).await);
+        assert!(!storage.has_proof(&101).await);
     }
 
     #[tokio::test]
     async fn test_get_proof_name() {
         let storage = TestAkdStorage::new();
-        let name = storage.get_proof_name(1).await.unwrap();
+        let name = storage.get_proof_name(&1).await.unwrap();
         assert_eq!(name.epoch, 1);
         assert_eq!(name.previous_hash, TestAkdStorage::hash(1));
         assert_eq!(name.current_hash, TestAkdStorage::hash(1));
@@ -113,7 +113,7 @@ mod tests {
     #[tokio::test]
     async fn test_get_proof() {
         let storage = TestAkdStorage::new();
-        let name = storage.get_proof_name(1).await.unwrap();
+        let name = storage.get_proof_name(&1).await.unwrap();
         let proof = storage.get_proof(&name).await.unwrap();
         assert_eq!(proof.name.epoch, 1);
         assert_eq!(proof.name.previous_hash, TestAkdStorage::hash(1));

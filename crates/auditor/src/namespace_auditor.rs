@@ -223,10 +223,10 @@ where
                     "Reached maximum epochs to process in one poll"
                 );
                 break;
-            } else if akd.has_proof(next_epoch.into()).await {
+            } else if akd.has_proof(&next_epoch.into()).await {
                 info!(akd = %akd, epoch = %next_epoch, "AKD has published a new proof");
 
-                if let Ok(proof_name) = akd.get_proof_name(next_epoch.into()).await {
+                if let Ok(proof_name) = akd.get_proof_name(&next_epoch.into()).await {
                     // Add the proof name to the queue
                     info!(akd = %akd, epoch = %next_epoch, proof_name = proof_name.to_string(), "Retrieved proof name");
                     result.push(proof_name.into());
@@ -254,7 +254,7 @@ where
         namespace_info: &NamespaceInfo,
     ) -> Result<()> {
         // Skip epochs before the starting epoch
-        if blob_name.epoch < namespace_info.starting_epoch.value() {
+        if blob_name.epoch < *namespace_info.starting_epoch.value() {
             trace!(
                 namespace = namespace_info.name,
                 epoch = blob_name.epoch,
@@ -265,7 +265,7 @@ where
         }
 
         // Check if we've already signed this epoch and verify the existing signature if present
-        if let Some(_existing_signature) = self.get_and_verify_signature(blob_name.epoch).await? {
+        if let Some(_existing_signature) = self.get_and_verify_signature(&blob_name.epoch).await? {
             trace!(
                 namespace = namespace_info.name,
                 epoch = blob_name.epoch,
@@ -290,8 +290,8 @@ where
 
     /// Retrieves and verifies an existing signature for the given epoch
     /// Returns Ok(Some(signature)) if found and valid, Ok(None) if not found, or Err if found but invalid
-    async fn get_and_verify_signature(&self, epoch: u64) -> Result<Option<EpochSignature>> {
-        if let Some(signature) = self.signature_storage.get_signature(&epoch).await {
+    async fn get_and_verify_signature(&self, epoch: &u64) -> Result<Option<EpochSignature>> {
+        if let Some(signature) = self.signature_storage.get_signature(&epoch).await? {
             // Verify the signature
             let singing_key_repository = self.signing_key_repository.read().await;
             let verifying_repo = singing_key_repository.verifying_key_repository();
@@ -326,7 +326,7 @@ where
             .map_err(|e| anyhow::anyhow!("Failed to decode audit blob: {:?}", e))?;
 
         // Get and verify the previous epoch's signature to establish the chain
-        let previous_hash = if blob_name.epoch == namespace_info.starting_epoch.value() {
+        let previous_hash = if blob_name.epoch == *namespace_info.starting_epoch.value() {
             // For the starting epoch, use the previous hash from the audit blob itself
             // as we trust this to be the initial state
             previous_hash_from_blob
@@ -335,7 +335,7 @@ where
 
             // Get the previous epoch's signature
             let previous_signature = self
-                .get_and_verify_signature(previous_epoch)
+                .get_and_verify_signature(&previous_epoch)
                 .await?
                 .ok_or_else(|| {
                     anyhow::anyhow!(
@@ -391,8 +391,8 @@ where
 
         // store the signature
         self.signature_storage
-            .set_signature(blob_name.epoch, signature)
-            .await;
+            .set_signature(&blob_name.epoch, signature)
+            .await?;
         trace!(
             namespace = namespace_info.name,
             blob_name.epoch, "Stored signature for audit proof"
@@ -563,7 +563,7 @@ mod tests {
             shutdown_rx,
         );
 
-        let result = auditor.get_and_verify_signature(1).await.unwrap();
+        let result = auditor.get_and_verify_signature(&1).await.unwrap();
         assert!(
             result.is_none(),
             "Should return None when no signature found"
@@ -585,7 +585,7 @@ mod tests {
             &signing_key,
         )
         .unwrap();
-        signature_storage.set_signature(1, signature).await;
+        signature_storage.set_signature(&1, signature).await.unwrap();
 
         let auditor = NamespaceAuditor::new(
             namespace_info,
@@ -596,7 +596,7 @@ mod tests {
             shutdown_rx,
         );
 
-        let result = auditor.get_and_verify_signature(1).await.unwrap();
+        let result = auditor.get_and_verify_signature(&1).await.unwrap();
         assert!(
             result.is_some(),
             "Should return signature when found and valid"
@@ -746,7 +746,7 @@ mod tests {
         let result = auditor.sign_blob(&blob_name, &namespace_info).await;
         assert!(result.is_ok(), "Signing blob should succeed");
         // Check that the signature was stored
-        let signature = signature_storage.get_signature(&blob_name.epoch).await;
+        let signature = signature_storage.get_signature(&blob_name.epoch).await.unwrap();
         assert!(
             signature.is_some(),
             "Signature should be stored after signing"

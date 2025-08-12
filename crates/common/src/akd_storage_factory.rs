@@ -26,7 +26,7 @@ impl std::fmt::Display for AkdStorageImpl {
 }
 
 impl AkdStorage for AkdStorageImpl {
-    async fn has_proof(&self, epoch: u64) -> bool {
+    async fn has_proof(&self, epoch: &u64) -> bool {
         match self {
             AkdStorageImpl::WhatsApp(storage) => storage.has_proof(epoch).await,
             #[cfg(any(test, feature = "testing"))]
@@ -34,7 +34,7 @@ impl AkdStorage for AkdStorageImpl {
         }
     }
 
-    async fn get_proof_name(&self, epoch: u64) -> Result<akd::local_auditing::AuditBlobName, crate::storage::AkdStorageError> {
+    async fn get_proof_name(&self, epoch: &u64) -> Result<akd::local_auditing::AuditBlobName, crate::storage::AkdStorageError> {
         match self {
             AkdStorageImpl::WhatsApp(storage) => storage.get_proof_name(epoch).await,
             #[cfg(any(test, feature = "testing"))]
