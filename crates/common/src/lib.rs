@@ -10,9 +10,11 @@ mod versions;
 
 pub use akd_configurations::BitwardenV1Configuration;
 pub use audit_blob_name::SerializableAuditBlobName;
+use chrono::Duration;
 pub use epoch_signature::EpochSignature;
 pub use error::AkdWatchError;
 pub use namespace_info::*;
+use tokio::time::Instant;
 pub use versions::*;
 
 #[cfg(test)]
@@ -21,3 +23,208 @@ pub use akd_configurations::TestAkdConfiguration;
 // Export testing utilities when cfg(test) is enabled
 #[cfg(any(test, feature = "testing"))]
 pub mod testing;
+
+pub async fn tic_toc<T>(f: impl core::future::Future<Output = T>) -> T {
+    {
+        let tic = Instant::now();
+        let out = f.await;
+        match Duration::from_std(Instant::now() - tic) {
+            Ok(duration) => {
+                tracing::debug!("Elapsed time: {:?}", duration);
+            }
+            Err(e) => {
+                tracing::warn!("Failed to calculate elapsed time: {}", e);
+            }
+        }
+        out
+    }
+}
+
+/// Macro to log timed events with tracing
+/// This macro captures the duration of an async operation and logs it at the specified level.
+/// It returns a future that must be awaited.
+/// 
+/// Usage:
+/// ```rust,no_run
+/// use akd_watch_common::timed_event;
+/// 
+/// async fn example() {
+///     // Basic usage with just a future (note the .await)
+///     let result = timed_event!(INFO, some_async_function()).await;
+///     // With a custom message
+///     let result = timed_event!(DEBUG, some_async_function(); "Database query completed").await;
+///     // With additional fields
+///     let result = timed_event!(INFO, some_async_function(); user_id = 123, table = "users").await;
+///     // With fields and message (fields come first)
+///     let result = timed_event!(INFO, some_async_function(); user_id = 123, "Query completed").await;
+/// }
+/// 
+/// async fn some_async_function() -> i32 { 42 }
+/// ```
+#[macro_export]
+macro_rules! timed_event {
+    // Basic case: just level and future
+    ($level:ident, $future:expr) => {
+        async {
+            let tic = ::tokio::time::Instant::now();
+            let result = $future.await;
+            match ::chrono::Duration::from_std(::tokio::time::Instant::now() - tic) {
+                Ok(duration) => {
+                    ::tracing::event!(::tracing::Level::$level, duration = ?duration, "Operation completed");
+                }
+                Err(e) => {
+                    ::tracing::warn!("Failed to calculate elapsed time: {}", e);
+                }
+            }
+            result
+        }
+    };
+    
+    // Level, future, and message
+    ($level:ident, $future:expr; $message:literal) => {
+        async {
+            let tic = ::tokio::time::Instant::now();
+            let result = $future.await;
+            match ::chrono::Duration::from_std(::tokio::time::Instant::now() - tic) {
+                Ok(duration) => {
+                    ::tracing::event!(::tracing::Level::$level, duration = ?duration, $message);
+                }
+                Err(e) => {
+                    ::tracing::warn!("Failed to calculate elapsed time: {}", e);
+                }
+            }
+            result
+        }
+    };
+    
+    // Level, future, and fields (no message)
+    ($level:ident, $future:expr; $($field:ident = $value:expr),+ $(,)?) => {
+        async {
+            let tic = ::tokio::time::Instant::now();
+            let result = $future.await;
+            match ::chrono::Duration::from_std(::tokio::time::Instant::now() - tic) {
+                Ok(duration) => {
+                    ::tracing::event!(::tracing::Level::$level, duration = ?duration, $($field = $value),+);
+                }
+                Err(e) => {
+                    ::tracing::warn!("Failed to calculate elapsed time: {}", e);
+                }
+            }
+            result
+        }
+    };
+    
+    // Level, future, message, and fields
+    ($level:ident, $future:expr; $($field:ident = $value:expr),+ , $message:literal $(,)?) => {
+        async {
+            let tic = ::tokio::time::Instant::now();
+            let result = $future.await;
+            match ::chrono::Duration::from_std(::tokio::time::Instant::now() - tic) {
+                Ok(duration) => {
+                    ::tracing::event!(::tracing::Level::$level, duration = ?duration, $($field = $value),+, $message);
+                }
+                Err(e) => {
+                    ::tracing::warn!("Failed to calculate elapsed time: {}", e);
+                }
+            }
+            result
+        }
+    };
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tokio::time::{sleep, Duration as TokioDuration};
+
+    #[tokio::test]
+    async fn test_tic_toc() {
+        let result = tic_toc(async { 42 }).await;
+        assert_eq!(result, 42);
+    }
+
+    #[tokio::test]
+    async fn test_timed_event_basic() {
+        let result = timed_event!(INFO, async { 42 }).await;
+        assert_eq!(result, 42);
+    }
+
+    #[tokio::test]
+    async fn test_timed_event_with_delay() {
+        let result = timed_event!(DEBUG, sleep(TokioDuration::from_millis(10))).await;
+        assert_eq!(result, ());
+    }
+
+    #[tokio::test]
+    async fn test_timed_event_with_message() {
+        let result = timed_event!(INFO, async { "hello" }; "Custom operation").await;
+        assert_eq!(result, "hello");
+    }
+
+    #[tokio::test]
+    async fn test_timed_event_with_fields() {
+        let result = timed_event!(WARN, async { 123 }; user_id = 456).await;
+        assert_eq!(result, 123);
+    }
+
+    #[tokio::test]
+    async fn test_timed_event_with_multiple_fields() {
+        let result = timed_event!(INFO, async { "success" }; operation = "test", count = 42).await;
+        assert_eq!(result, "success");
+    }
+
+    #[tokio::test]
+    async fn test_timed_event_preserves_error() {
+        let result: Result<i32, &str> = timed_event!(INFO, async { Err("test error") }).await;
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "test error");
+    }
+
+    #[tokio::test]
+    async fn test_timed_event_different_levels() {
+        let _trace = timed_event!(TRACE, async { 1 }).await;
+        let _debug = timed_event!(DEBUG, async { 2 }).await;
+        let _info = timed_event!(INFO, async { 3 }).await;
+        let _warn = timed_event!(WARN, async { 4 }).await;
+        let _error = timed_event!(ERROR, async { 5 }).await;
+    }
+
+    // Test that the macro works with complex futures
+    async fn complex_async_function(value: i32) -> Result<String, &'static str> {
+        sleep(TokioDuration::from_millis(1)).await;
+        if value > 0 {
+            Ok(format!("Value: {}", value))
+        } else {
+            Err("Invalid value")
+        }
+    }
+
+    #[tokio::test]
+    async fn test_timed_event_with_complex_future() {
+        let result = timed_event!(INFO, complex_async_function(42); "Complex operation").await;
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "Value: 42");
+    }
+
+    #[tokio::test]
+    async fn test_timed_event_with_complex_future_and_fields() {
+        let result = timed_event!(DEBUG, complex_async_function(100); 
+                                  operation = "database_query", query_id = 123).await;
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "Value: 100");
+    }
+
+    #[tokio::test]
+    async fn test_timed_event_with_fields_and_message() {
+        let result = timed_event!(INFO, async { "success" }; 
+                                  operation = "test", user_id = 456, "Operation completed successfully").await;
+        assert_eq!(result, "success");
+    }
+
+    #[tokio::test]
+    async fn test_timed_event_error_case() {
+        let result = timed_event!(WARN, complex_async_function(-1); "Should fail").await;
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "Invalid value");
+    }
+}

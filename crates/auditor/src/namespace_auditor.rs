@@ -1,5 +1,6 @@
 use std::{os::unix::process, sync::Arc};
 use std::time::Duration;
+use akd_watch_common::timed_event;
 use tokio::sync::RwLock;
 
 use akd_watch_common::{
@@ -158,7 +159,11 @@ where
 
         // Process each audit request
         for blob_name in &blob_names {
-            if let Err(e) = self.process_audit_request(blob_name, &namespace_info).await {
+            let process_future = timed_event!(INFO, self.process_audit_request(blob_name, &namespace_info); 
+                    namespace = namespace_info.name,
+                    epoch = blob_name.epoch,
+                    blob_name = blob_name.to_string(), "Processed audit request");
+            if let Err(e) = process_future.await {
                 warn!(
                     namespace = namespace_info.name,
                     epoch = blob_name.epoch,
@@ -182,13 +187,6 @@ where
                 let mut repo = self.namespace_repository.write().await;
                 repo.update_namespace(namespace_info.update_last_verified_epoch(blob_name.epoch.into()))
                 .await?;
-
-                info!(
-                    namespace = namespace_info.name,
-                    epoch = blob_name.epoch,
-                    blob_name = blob_name.to_string(),
-                    "Successfully processed audit request"
-                );
             }
         }
 
