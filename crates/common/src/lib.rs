@@ -57,9 +57,19 @@ pub async fn tic_toc<T>(f: impl core::future::Future<Output = T>) -> T {
 ///     let result = timed_event!(INFO, some_async_function(); user_id = 123, table = "users").await;
 ///     // With fields and message (fields come first)
 ///     let result = timed_event!(INFO, some_async_function(); user_id = 123, "Query completed").await;
+///     
+///     // Result-aware logging - access the result value in logging
+///     let result = timed_event!(with_result(res) INFO, some_function(); 
+///                               result_len = res.len(), "Operation completed").await;
+///     
+///     // Result-aware logging with just the result value
+///     let status = timed_event!(with_result(code) INFO, get_status_code(); 
+///                               status_code = *code).await;
 /// }
 /// 
 /// async fn some_async_function() -> i32 { 42 }
+/// async fn some_function() -> String { "success".to_string() }
+/// async fn get_status_code() -> u16 { 200 }
 /// ```
 #[macro_export]
 macro_rules! timed_event {
@@ -121,6 +131,78 @@ macro_rules! timed_event {
             let result = $future.await;
             match ::chrono::Duration::from_std(::tokio::time::Instant::now() - tic) {
                 Ok(duration) => {
+                    ::tracing::event!(::tracing::Level::$level, duration = ?duration, $($field = $value),+, $message);
+                }
+                Err(e) => {
+                    ::tracing::warn!("Failed to calculate elapsed time: {}", e);
+                }
+            }
+            result
+        }
+    };
+
+    // Result-aware: simple prefix without fat arrow - just level and future
+    (with_result($result_var:ident) $level:ident, $future:expr) => {
+        async {
+            let tic = ::tokio::time::Instant::now();
+            let result = $future.await;
+            match ::chrono::Duration::from_std(::tokio::time::Instant::now() - tic) {
+                Ok(duration) => {
+                    let $result_var = &result;
+                    ::tracing::event!(::tracing::Level::$level, duration = ?duration, "Operation completed");
+                }
+                Err(e) => {
+                    ::tracing::warn!("Failed to calculate elapsed time: {}", e);
+                }
+            }
+            result
+        }
+    };
+
+    // Result-aware: simple prefix + level, future, and message
+    (with_result($result_var:ident) $level:ident, $future:expr; $message:literal) => {
+        async {
+            let tic = ::tokio::time::Instant::now();
+            let result = $future.await;
+            match ::chrono::Duration::from_std(::tokio::time::Instant::now() - tic) {
+                Ok(duration) => {
+                    let $result_var = &result;
+                    ::tracing::event!(::tracing::Level::$level, duration = ?duration, $message);
+                }
+                Err(e) => {
+                    ::tracing::warn!("Failed to calculate elapsed time: {}", e);
+                }
+            }
+            result
+        }
+    };
+
+    // Result-aware: simple prefix + level, future, and fields (no message)
+    (with_result($result_var:ident) $level:ident, $future:expr; $($field:ident = $value:expr),+ $(,)?) => {
+        async {
+            let tic = ::tokio::time::Instant::now();
+            let result = $future.await;
+            match ::chrono::Duration::from_std(::tokio::time::Instant::now() - tic) {
+                Ok(duration) => {
+                    let $result_var = &result;
+                    ::tracing::event!(::tracing::Level::$level, duration = ?duration, $($field = $value),+);
+                }
+                Err(e) => {
+                    ::tracing::warn!("Failed to calculate elapsed time: {}", e);
+                }
+            }
+            result
+        }
+    };
+
+    // Result-aware: simple prefix + level, future, message, and fields
+    (with_result($result_var:ident) $level:ident, $future:expr; $($field:ident = $value:expr),+ , $message:literal $(,)?) => {
+        async {
+            let tic = ::tokio::time::Instant::now();
+            let result = $future.await;
+            match ::chrono::Duration::from_std(::tokio::time::Instant::now() - tic) {
+                Ok(duration) => {
+                    let $result_var = &result;
                     ::tracing::event!(::tracing::Level::$level, duration = ?duration, $($field = $value),+, $message);
                 }
                 Err(e) => {
@@ -226,5 +308,52 @@ mod tests {
         let result = timed_event!(WARN, complex_async_function(-1); "Should fail").await;
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), "Invalid value");
+    }
+
+    // Test result-aware logging
+    #[tokio::test]
+    async fn test_timed_event_result_aware_basic() {
+        let result = timed_event!(with_result(res) INFO, async { 42 }; result_value = *res).await;
+        assert_eq!(result, 42);
+    }
+
+    #[tokio::test]
+    async fn test_timed_event_result_aware_with_message() {
+        let result = timed_event!(with_result(res) INFO, async { "success".to_string() }; 
+                                  result_len = res.len(), "Operation completed").await;
+        assert_eq!(result, "success");
+    }
+
+    #[tokio::test]
+    async fn test_timed_event_result_aware_with_complex_function() {
+        let result = timed_event!(with_result(res) INFO, complex_async_function(100); 
+                                  operation = "complex", 
+                                  success = res.is_ok(), "Complex operation completed").await;
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "Value: 100");
+    }
+
+    #[tokio::test]
+    async fn test_timed_event_result_aware_error_case() {
+        let result = timed_event!(with_result(res) WARN, complex_async_function(-1); 
+                                  operation = "complex",
+                                  has_error = res.is_err(), "Complex operation completed").await;
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "Invalid value");
+    }
+
+    #[tokio::test] 
+    async fn test_timed_event_result_aware_status_code() {
+        async fn get_status() -> u16 { 404 }
+        
+        let status = timed_event!(with_result(code) WARN, get_status(); 
+                                  status_code = *code, "HTTP request completed").await;
+        assert_eq!(status, 404);
+    }
+
+    #[tokio::test]
+    async fn test_timed_event_result_aware_no_fields() {
+        let result = timed_event!(with_result(_items) DEBUG, async { vec![1, 2, 3] }).await;
+        assert_eq!(result, vec![1, 2, 3]);
     }
 }

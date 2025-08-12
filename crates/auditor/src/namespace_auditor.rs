@@ -165,9 +165,10 @@ where
 
         // Process each audit request
         for blob_name in &blob_names {
-            let process_future = timed_event!(INFO, self.process_audit_request(blob_name, &namespace_info); 
+            let process_future = timed_event!(with_result(res) INFO, self.process_audit_request(blob_name, &namespace_info); 
                     namespace = namespace_info.name,
                     epoch = blob_name.epoch,
+                    success = res.is_ok(),
                     blob_name = blob_name.to_string(), "Processed audit request");
             if let Err(e) = process_future.await {
                 warn!(
