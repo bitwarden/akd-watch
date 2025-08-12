@@ -17,7 +17,7 @@ key_lifetime_seconds = 2592000  # 30 days in seconds. Optional, defaults to 30 d
 [storage]
 type = "InMemory"
 
-# Option 2: File-based storage
+# Option 2: File-based storage (stores signatures as JSON files)
 # [storage]
 # type = "File"
 # directory = "/var/lib/akd-watch/storage"

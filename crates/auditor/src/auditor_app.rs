@@ -3,19 +3,15 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::RwLock;
 
-use akd_watch_common::{
-    storage::{
-        namespace_repository::{InMemoryNamespaceRepository, NamespaceRepository},
-        signing_key_repository::{InMemorySigningKeyRepository, SigningKeyRepository},
-        InMemorySignatureStorage, SignatureStorage,
-    },
-};
+use akd_watch_common::storage::{
+        namespace_repository::{InMemoryNamespaceRepository, NamespaceRepository}, signing_key_repository::{InMemorySigningKeyRepository, SigningKeyRepository}, FilesystemSignatureStorage, InMemorySignatureStorage, SignatureStorage
+    };
 use anyhow::{Context, Result};
 use futures_util::future;
 use tokio::sync::broadcast;
 use tracing::{info, warn};
 
-use crate::config::AuditorConfig;
+use crate::config::{AuditorConfig, StorageConfig};
 use crate::namespace_auditor::NamespaceAuditor;
 
 /// Main auditor application
@@ -27,7 +23,7 @@ pub struct AuditorApp<NR, SKR, SS> {
     shutdown_tx: broadcast::Sender<()>,
 }
 
-impl AuditorApp<InMemoryNamespaceRepository, InMemorySigningKeyRepository, InMemoryStorage> {
+impl AuditorApp<InMemoryNamespaceRepository, InMemorySigningKeyRepository, FilesystemSignatureStorage> {
     /// Build the auditor application from configuration
     pub async fn from_config(config: AuditorConfig) -> Result<Self> {
         info!("Initializing auditor with {} namespaces", config.namespaces.len());
@@ -160,12 +156,19 @@ where
         Ok(namespace_repository)
     }
 
-    async fn init_signature_storage(config: &AuditorConfig) -> Result<HashMap<String, InMemorySignatureStorage>> {
+    async fn init_signature_storage(config: &AuditorConfig) -> Result<HashMap<String, FilesystemSignatureStorage>> {
         let mut storage_map = HashMap::new();
+
+        let storage_directory = match &config.storage {
+            StorageConfig::File { directory } => directory.clone(),
+            _ => {
+                return Err(anyhow::anyhow!("Unsupported storage type: {:?}", config.storage));
+            }
+        };
         
         for ns_config in &config.namespaces {
             // TODO: Could configure storage type based on config in the future
-            storage_map.insert(ns_config.name.clone(), InMemorySignatureStorage::new());
+            storage_map.insert(ns_config.name.clone(), FilesystemSignatureStorage::new(storage_directory.clone()));
         }
         
         Ok(storage_map)

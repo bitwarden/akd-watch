@@ -18,7 +18,7 @@ See `config.example.toml` for a complete example configuration file.
 
 ### Storage Configuration
 
-The storage backend is configured using the `storage` section. You can choose from:
+The storage backend is configured using the `storage` section, which specifies how signatures should be persisted. You can choose from:
 
 **In-Memory Storage:**
 ```toml
@@ -32,6 +32,17 @@ type = "InMemory"
 type = "File" 
 directory = "/var/lib/akd-watch/storage"
 ```
+
+When using file-based storage:
+  ```
+  /var/lib/akd-watch/storage/
+  ├── 1/
+  │   └── <digest_hash>.json
+  ├── 2/
+  │   └── <digest_hash>.json
+  └── ...
+  ```
+  Each signature file is named after the digest (root hash) it verifies and contains the complete signature in JSON format.
 
 **Azure Blob Storage:**
 ```toml
