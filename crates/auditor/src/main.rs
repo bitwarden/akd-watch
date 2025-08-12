@@ -13,7 +13,7 @@ use config::AuditorConfig;
 #[tokio::main]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::TRACE)
+        .with_max_level(tracing::Level::INFO)
         .init();
 
     trace!("Starting auditor application");

@@ -1,4 +1,4 @@
-use std::{os::unix::process, sync::Arc};
+use std::sync::Arc;
 use std::time::Duration;
 use akd_watch_common::timed_event;
 use tokio::sync::RwLock;
@@ -6,11 +6,11 @@ use tokio::sync::RwLock;
 use akd_watch_common::{
     akd_configurations::verify_consecutive_append_only, akd_storage_factory::AkdStorageFactory, storage::{
         namespace_repository::NamespaceRepository, signatures::SignatureStorage, signing_keys::SigningKeyRepository, AkdStorage
-    }, tic_toc, EpochSignature, NamespaceInfo, SerializableAuditBlobName
+    }, EpochSignature, NamespaceInfo, SerializableAuditBlobName
 };
 use anyhow::Result;
 use tokio::sync::broadcast::Receiver;
-use tracing::{info, instrument, trace, warn};
+use tracing::{debug, info, instrument, trace, warn};
 
 const MAX_EPOCHS_PER_POLL: usize = 5;
 
@@ -144,6 +144,12 @@ where
 
         // Poll for new epochs
         let blob_names = self.poll_for_new_epochs(&namespace_info).await?;
+        info!(
+            namespace = namespace_info.name,
+            new_epochs = ?(blob_names.iter().map(|b| b.epoch).collect::<Vec<_>>()),
+            count = blob_names.len(),
+            "Polled for new epochs"
+        );
 
         if !blob_names.is_empty() {
             trace!(
@@ -207,7 +213,7 @@ where
     }
 
     /// Polls the AKD for a list of unaudited epochs and returns a list of `AuditRequest`s.
-    #[instrument(level = "info", skip_all, fields(namespace = namespace_info.name))]
+    #[instrument(level = "debug", skip_all, fields(namespace = namespace_info.name))]
     async fn poll_for_new_epochs(
         &self,
         namespace_info: &NamespaceInfo,
@@ -232,11 +238,11 @@ where
                 );
                 break;
             } else if akd.has_proof(&next_epoch.into()).await {
-                info!(akd = %akd, epoch = %next_epoch, "AKD has published a new proof");
+                debug!(akd = %akd, epoch = %next_epoch, "AKD has published a new proof");
 
                 if let Ok(proof_name) = akd.get_proof_name(&next_epoch.into()).await {
                     // Add the proof name to the queue
-                    info!(akd = %akd, epoch = %next_epoch, proof_name = proof_name.to_string(), "Retrieved proof name");
+                    trace!(akd = %akd, epoch = %next_epoch, proof_name = proof_name.to_string(), "Retrieved proof name");
                     result.push(proof_name.into());
                     // increment the epoch and continue to check for the next one
                     next_epoch = next_epoch.next();
@@ -255,7 +261,7 @@ where
     }
 
     /// Downloads the audit proof for the given `AuditRequest`, verifies it, and stores the signature if successful.
-    #[instrument(level = "info", skip_all, fields(namespace = namespace_info.name, blob_name = blob_name.to_string()))]
+    #[instrument(level = "debug", skip_all, fields(namespace = namespace_info.name, blob_name = blob_name.to_string()))]
     async fn process_audit_request(
         &mut self,
         blob_name: &SerializableAuditBlobName,
