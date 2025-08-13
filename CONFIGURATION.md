@@ -15,6 +15,26 @@ See `config.example.toml` for a complete example configuration file.
 - `namespaces`: Array of namespace configurations to audit
 - `signing`: Signing key configuration
 - `storage`: Storage backend configuration
+- `namespace_storage`: Namespace state storage configuration
+
+### Namespace State Storage Configuration
+
+The namespace state (e.g., last verified epochs and status) is configured using the `namespace_storage` section. This is disctinct from the Namespaces configuration, which defines initial conditions for a namespace. You can choose from:
+
+**In-Memory Namespace Storage:**
+```toml
+[namespace_storage]
+type = "InMemory"
+```
+
+**File-based Namespace Storage:**
+```toml
+[namespace_storage]
+type = "File"
+state_file = "/var/lib/akd-watch/namespaces.json"
+```
+
+When using file-based namespace storage, the state will be persisted in the specified JSON file at the location specified by `state_file`.
 
 ### Storage Configuration
 

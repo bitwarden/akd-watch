@@ -73,10 +73,11 @@ impl SignatureStorage for FilesystemSignatureStorage {
 
         // Write the signature to a file in the epoch directory
         let signature_path = format!("{}/{}.json", epoch_dir, signature.digest_hex());
+        let content = serde_json::to_string(&signature)
+            .map_err(|e| SignatureStorageError::SerializationError(e))?;
         std::fs::write(
             &signature_path,
-            serde_json::to_string(&signature)
-                .map_err(|e| SignatureStorageError::SerializationError(e))?,
+            content,
         )
         .map_err(|e| SignatureStorageFileError::IoError(e))?;
 

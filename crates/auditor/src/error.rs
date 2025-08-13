@@ -40,6 +40,6 @@ pub enum AuditError {
     SignError(#[from] akd_watch_common::SignError),
     #[error("Namespace repository error: {0}")]
     NamespaceRepositoryError(
-        #[from] akd_watch_common::storage::namespace_repository::NamespaceRepositoryError,
+        #[from] akd_watch_common::storage::namespaces::NamespaceRepositoryError,
     ),
 }

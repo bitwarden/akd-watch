@@ -1,4 +1,6 @@
-use akd_watch_common::{NamespaceInfo, NamespaceStatus, akd_configurations::AkdConfiguration};
+use akd_watch_common::{
+    Epoch, NamespaceInfo, NamespaceStatus, akd_configurations::AkdConfiguration,
+};
 use config::{Config, ConfigError, Environment, File};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -27,6 +29,9 @@ pub struct AuditorConfig {
     /// Namespace configurations to audit
     pub namespaces: Vec<NamespaceConfig>,
 
+    /// Namespace storage configuration
+    pub namespace_storage: NamespaceStorageConfig,
+
     /// Signing key configuration
     pub signing: SigningConfig,
 
@@ -52,12 +57,57 @@ pub struct NamespaceConfig {
     /// Status
     pub status: ConfigNamespaceStatus,
 }
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SigningConfig {
     /// Path to the signing key file
     pub key_dir: String,
     #[serde(default = "default_key_lifetime_seconds")]
     pub key_lifetime_seconds: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(tag = "type")]
+pub enum NamespaceStorageConfig {
+    #[serde(rename = "InMemory")]
+    InMemory,
+    #[serde(rename = "File")]
+    File {
+        /// file path where namespace state will be stored
+        state_file: String,
+    },
+}
+
+impl NamespaceStorageConfig {
+    /// Validate that the namespace storage configuration is complete and usable
+    pub fn validate(&self) -> Result<(), ConfigError> {
+        match self {
+            NamespaceStorageConfig::InMemory => Ok(()),
+            NamespaceStorageConfig::File { state_file } => {
+                if state_file.is_empty() {
+                    return Err(ConfigError::Message(
+                        "Namespace storage state_file cannot be empty".to_string(),
+                    ));
+                }
+
+                // Validate the directory exists
+                let parent = std::path::Path::new(state_file).parent().ok_or_else(|| {
+                    ConfigError::Message(
+                        "Namespace storage state_file must have a valid parent directory"
+                            .to_string(),
+                    )
+                })?;
+                if !parent.exists() {
+                    return Err(ConfigError::Message(format!(
+                        "Namespace storage state_file parent directory does not exist: {}",
+                        parent.display()
+                    )));
+                }
+
+                Ok(())
+            }
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -157,6 +207,7 @@ impl AuditorConfig {
     /// Validate the entire auditor configuration
     pub fn validate(&self) -> Result<(), ConfigError> {
         // Validate storage configuration
+        self.namespace_storage.validate()?;
         self.storage.validate()?;
 
         // TODO: Add validation for other configuration sections as needed
@@ -178,7 +229,8 @@ impl NamespaceConfig {
     /// If an existing namespace_info is provided, it will preserve the last_verified_epoch
     /// Otherwise, it will use the starting_epoch from config
     ///
-    /// Returns a tuple of (NamespaceInfo, bool) where the bool indicates if the status was changed. New namespaces will not count as a change.
+    /// Returns a tuple of (NamespaceInfo, bool) where the bool indicates if there are updates to persist for the existing namespace.
+    /// New namespaces will not count as a change.
     pub fn to_namespace_info(
         &self,
         existing_namespace_info: Option<&NamespaceInfo>,
@@ -194,10 +246,12 @@ impl NamespaceConfig {
             existing_namespace_info.map(|info| &info.status),
         );
 
-        // Use existing last_verified_epoch if available, otherwise use starting_epoch from config
-        let last_verified_epoch = existing_namespace_info
+        // Use existing last_verified_epoch if available
+        let existing_last_verified_epoch = existing_namespace_info
             .map(|info| info.last_verified_epoch)
             .flatten();
+        let (last_verified_epoch, last_verified_epoch_changed) =
+            Self::resolve_last_verified_epoch(self.starting_epoch, existing_last_verified_epoch);
 
         // Always use the starting_epoch from config (may have been updated)
         let starting_epoch = self.starting_epoch.into();
@@ -211,7 +265,9 @@ impl NamespaceConfig {
             status,
         };
 
-        Ok((namespace_info, status_changed))
+        let changed = status_changed || last_verified_epoch_changed;
+
+        Ok((namespace_info, changed))
     }
 
     /// Resolve status transitions based on configuration and existing status
@@ -238,6 +294,24 @@ impl NamespaceConfig {
                 let changed = *current_status != desired_status;
                 (desired_status, changed)
             }
+        }
+    }
+
+    /// Resolves the last_verified_epoch based on config starting_epoch and existing value
+    /// Alters the last_verified_epoch only if the existing value is less than the config starting_epoch,
+    /// and indicates this override with a true boolean in the return tuple.
+    fn resolve_last_verified_epoch(
+        config_starting_epoch: u64,
+        existing_last_verified_epoch: Option<Epoch>,
+    ) -> (Option<Epoch>, bool) {
+        match existing_last_verified_epoch {
+            Some(epoch) if epoch.value() >= &config_starting_epoch => (Some(epoch), false),
+            Some(epoch) if epoch.value() < &config_starting_epoch => {
+                // If existing epoch is less than config starting epoch, treat as a new namespace
+                (None, true)
+            }
+            None => (None, false),
+            Some(_) => panic!("Unreachable case"),
         }
     }
 }

@@ -8,7 +8,7 @@ use akd_watch_common::{
     akd_configurations::verify_consecutive_append_only,
     akd_storage_factory::AkdStorageFactory,
     storage::{
-        AkdStorage, namespace_repository::NamespaceRepository, signatures::SignatureStorage,
+        AkdStorage, namespaces::NamespaceRepository, signatures::SignatureStorage,
         signing_keys::SigningKeyRepository,
     },
 };
@@ -18,7 +18,7 @@ use tracing::{debug, error, info, instrument, trace, warn};
 
 use crate::error::AuditError;
 
-const MAX_EPOCHS_PER_POLL: usize = 5;
+const MAX_EPOCHS_PER_POLL: usize = 50;
 
 /// Service responsible for auditing a single namespace
 pub struct NamespaceAuditor<NR, SKR, SS> {
@@ -107,14 +107,14 @@ where
     /// Returns true if shutdown was received, false if sleep completed normally
     async fn interruptible_sleep(&mut self, processed_count: &usize) -> bool {
         let sleep_duration = if *processed_count != MAX_EPOCHS_PER_POLL {
-            trace!(
+            debug!(
                 namespace = self.namespace_info.name,
                 sleep_duration = ?self.sleep_duration,
                 "Sleeping for configured duration after processing epochs"
             );
             self.sleep_duration
         } else {
-            trace!(
+            debug!(
                 namespace = self.namespace_info.name,
                 "Processed all epochs in this cycle, no sleep needed"
             );

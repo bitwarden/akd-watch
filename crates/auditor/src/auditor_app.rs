@@ -4,7 +4,7 @@ use std::time::Duration;
 use tokio::sync::RwLock;
 
 use akd_watch_common::storage::{
-    namespace_repository::{InMemoryNamespaceRepository, NamespaceRepository},
+    namespaces::{FileNamespaceRepository, NamespaceRepository},
     signatures::{FilesystemSignatureStorage, SignatureStorage},
     signing_keys::{FileSigningKeyRepository, SigningKeyRepository},
 };
@@ -13,7 +13,7 @@ use futures_util::future;
 use tokio::sync::broadcast;
 use tracing::{info, warn};
 
-use crate::config::{AuditorConfig, StorageConfig};
+use crate::config::{AuditorConfig, NamespaceStorageConfig, StorageConfig};
 use crate::namespace_auditor::NamespaceAuditor;
 
 /// Main auditor application
@@ -25,7 +25,7 @@ pub struct AuditorApp<NR, SKR, SS> {
     shutdown_tx: broadcast::Sender<()>,
 }
 
-impl AuditorApp<InMemoryNamespaceRepository, FileSigningKeyRepository, FilesystemSignatureStorage> {
+impl AuditorApp<FileNamespaceRepository, FileSigningKeyRepository, FilesystemSignatureStorage> {
     /// Build the auditor application from configuration
     pub async fn from_config(config: AuditorConfig) -> Result<Self> {
         info!(
@@ -131,8 +131,17 @@ where
     // Private initialization methods that can be configured based on config in the future
     async fn init_namespace_repository(
         config: &AuditorConfig,
-    ) -> Result<InMemoryNamespaceRepository> {
-        let mut namespace_repository = InMemoryNamespaceRepository::new();
+    ) -> Result<FileNamespaceRepository> {
+        let file_path = match &config.namespace_storage {
+            NamespaceStorageConfig::File{ state_file } => state_file.clone(),
+            _ => {
+                return Err(anyhow::anyhow!(
+                    "Unsupported namespace storage type: {:?}", config.namespace_storage
+                ));
+            }
+        };
+
+        let mut namespace_repository = FileNamespaceRepository::new(file_path);
         let existing_namespaces = namespace_repository
             .list_namespaces()
             .await
@@ -143,7 +152,7 @@ where
                 .iter()
                 .find(|info| info.name == ns_config.name);
 
-            let (namespace_info, status_changed) = ns_config
+            let (namespace_info, changed) = ns_config
                 .to_namespace_info(existing_info)
                 .with_context(|| format!("Configuration error for namespace {}", ns_config.name))?;
 
@@ -153,7 +162,7 @@ where
                     .add_namespace(namespace_info.clone())
                     .await
                     .with_context(|| format!("Failed to add namespace {}", ns_config.name))?;
-            } else if status_changed {
+            } else if changed {
                 info!(
                     namespace = ns_config.name,
                     old_status = ?existing_info.unwrap().status,

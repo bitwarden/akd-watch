@@ -1,4 +1,4 @@
-pub mod namespace_repository;
+pub mod namespaces;
 pub mod signatures;
 pub mod signing_keys;
 #[cfg(any(test, feature = "testing"))]
