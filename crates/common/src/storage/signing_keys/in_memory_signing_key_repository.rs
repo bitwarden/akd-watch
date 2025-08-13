@@ -9,7 +9,10 @@ use uuid::Uuid;
 
 use crate::{
     crypto::{SigningKey, VerifyingKey},
-    storage::signing_keys::{SigningKeyRepository, SigningKeyRepositoryError, VerifyingKeyRepository, VerifyingKeyRepositoryError},
+    storage::signing_keys::{
+        SigningKeyRepository, SigningKeyRepositoryError, VerifyingKeyRepository,
+        VerifyingKeyRepositoryError,
+    },
 };
 
 #[derive(Clone, Debug)]
@@ -55,7 +58,10 @@ impl InMemorySigningKeyRepository {
 
 impl SigningKeyRepository for InMemorySigningKeyRepository {
     async fn get_current_signing_key(&self) -> Result<SigningKey, SigningKeyRepositoryError> {
-        let mut key_state = self.keys.lock().map_err(|_| SigningKeyRepositoryError::Custom("Poisoned key state".into()))?;
+        let mut key_state = self
+            .keys
+            .lock()
+            .map_err(|_| SigningKeyRepositoryError::Custom("Poisoned key state".into()))?;
 
         // Check if the current key is expired
         if key_state.current_signing_key.is_expired() {
@@ -86,7 +92,9 @@ impl SigningKeyRepository for InMemorySigningKeyRepository {
         Ok(())
     }
 
-    fn verifying_key_repository(&self) -> Result<impl VerifyingKeyRepository, SigningKeyRepositoryError> {
+    fn verifying_key_repository(
+        &self,
+    ) -> Result<impl VerifyingKeyRepository, SigningKeyRepositoryError> {
         let mut verifying_keys = Vec::new();
 
         let key_state = self.keys.lock().unwrap();
@@ -125,7 +133,10 @@ impl InMemoryVerifyingKeyRepository {
 }
 
 impl VerifyingKeyRepository for InMemoryVerifyingKeyRepository {
-    async fn get_verifying_key(&self, key_id: Uuid) -> Result<Option<VerifyingKey>, VerifyingKeyRepositoryError> {
+    async fn get_verifying_key(
+        &self,
+        key_id: Uuid,
+    ) -> Result<Option<VerifyingKey>, VerifyingKeyRepositoryError> {
         let keys = self.verifying_keys.lock().unwrap();
         Ok(keys.get(&key_id).cloned())
     }
@@ -228,7 +239,10 @@ mod tests {
         // Both keys should be available in verifying key repository
         let verifying_repo = repo.verifying_key_repository().unwrap();
         let old_verifying_key = verifying_repo.get_verifying_key(key1_id).await.unwrap();
-        let current_verifying_key = verifying_repo.get_verifying_key(key2.key_id()).await.unwrap();
+        let current_verifying_key = verifying_repo
+            .get_verifying_key(key2.key_id())
+            .await
+            .unwrap();
         assert!(old_verifying_key.is_some());
         assert!(current_verifying_key.is_some());
     }
@@ -310,7 +324,10 @@ mod tests {
         let verifying_repo = repo.verifying_key_repository().unwrap();
 
         let unknown_key_id = uuid::Uuid::new_v4();
-        let result = verifying_repo.get_verifying_key(unknown_key_id).await.unwrap();
+        let result = verifying_repo
+            .get_verifying_key(unknown_key_id)
+            .await
+            .unwrap();
 
         assert!(result.is_none());
     }
@@ -325,7 +342,8 @@ mod tests {
 
         for _ in 0..10 {
             let repo_clone = repo_clone.clone();
-            let handle = tokio::spawn(async move { repo_clone.get_current_signing_key().await.unwrap() });
+            let handle =
+                tokio::spawn(async move { repo_clone.get_current_signing_key().await.unwrap() });
             handles.push(handle);
         }
 

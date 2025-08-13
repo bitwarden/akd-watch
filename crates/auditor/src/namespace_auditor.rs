@@ -1,16 +1,22 @@
+use akd_watch_common::{NamespaceStatus, timed_event};
 use std::sync::Arc;
 use std::time::Duration;
-use akd_watch_common::timed_event;
 use tokio::sync::RwLock;
 
 use akd_watch_common::{
-    akd_configurations::verify_consecutive_append_only, akd_storage_factory::AkdStorageFactory, storage::{
-        namespace_repository::NamespaceRepository, signatures::SignatureStorage, signing_keys::SigningKeyRepository, AkdStorage
-    }, EpochSignature, NamespaceInfo, SerializableAuditBlobName
+    EpochSignature, NamespaceInfo, SerializableAuditBlobName,
+    akd_configurations::verify_consecutive_append_only,
+    akd_storage_factory::AkdStorageFactory,
+    storage::{
+        AkdStorage, namespace_repository::NamespaceRepository, signatures::SignatureStorage,
+        signing_keys::SigningKeyRepository,
+    },
 };
 use anyhow::Result;
 use tokio::sync::broadcast::Receiver;
-use tracing::{debug, info, instrument, trace, warn};
+use tracing::{debug, error, info, instrument, trace, warn};
+
+use crate::error::AuditError;
 
 const MAX_EPOCHS_PER_POLL: usize = 5;
 
@@ -142,6 +148,21 @@ where
             "Running audit cycle for namespace"
         );
 
+        // Refuse to audit if the namespace is disabled or in a failed state
+        if !namespace_info.status.is_active() {
+            warn!(
+                namespace = namespace_info.name,
+                status = ?namespace_info.status,
+                "Namespace is not online, but is running audits."
+            );
+
+            return Err(anyhow::anyhow!(
+                "Namespace {} is not online (status: {:?})",
+                namespace_info.name,
+                namespace_info.status
+            ));
+        }
+
         // Poll for new epochs
         let blob_names = self.poll_for_new_epochs(&namespace_info).await?;
         info!(
@@ -165,22 +186,25 @@ where
 
         // Process each audit request
         for blob_name in &blob_names {
-            let process_future = timed_event!(with_result(res) INFO, self.process_audit_request(blob_name, &namespace_info); 
+            let process_future = timed_event!(with_result(res) INFO, self.process_audit_request(blob_name, &namespace_info);
                     namespace = namespace_info.name,
                     epoch = blob_name.epoch,
                     success = res.is_ok(),
                     blob_name = blob_name.to_string(), "Processed audit request");
             if let Err(e) = process_future.await {
-                warn!(
-                    namespace = namespace_info.name,
-                    epoch = blob_name.epoch,
-                    blob_name = blob_name.to_string(),
-                    error = %e,
-                    "Audit request failed - stopping further processing for this namespace"
-                );
-
-                // TODO: Update namespace status in repository to failed state
-                // TODO: Validate namespace status before processing in future cycles
+                // We're stopping further processing anyway
+                if let Err(e) = self
+                    .handle_audit_failure(&namespace_info, blob_name, &e)
+                    .await
+                {
+                    error!(
+                        namespace = namespace_info.name,
+                        epoch = blob_name.epoch,
+                        blob_name = blob_name.to_string(),
+                        error = %e,
+                        "Failed to handle audit failure"
+                    );
+                }
 
                 // Return error to stop processing this namespace
                 return Err(anyhow::anyhow!(
@@ -192,12 +216,57 @@ where
             } else {
                 // record the successful audit
                 let mut repo = self.namespace_repository.write().await;
-                repo.update_namespace(namespace_info.update_last_verified_epoch(blob_name.epoch.into()))
+                repo.update_namespace(
+                    namespace_info.update_last_verified_epoch(blob_name.epoch.into()),
+                )
                 .await?;
             }
         }
 
         Ok(blob_names.len())
+    }
+
+    async fn handle_audit_failure(
+        &self,
+        namespace_info: &NamespaceInfo,
+        blob_name: &SerializableAuditBlobName,
+        error: &AuditError,
+    ) -> Result<(), AuditError> {
+        trace!(
+            namespace = self.namespace_info.name,
+            error = %error,
+            "Handling audit failure"
+        );
+
+        match error {
+            AuditError::SignatureNotFound(epoch) => {
+                error!(
+                namespace = namespace_info.name,
+                epoch = %epoch,
+                "Signature not found for epoch - this may indicate a gap in the audit chain"
+                );
+                // Update namespace to indicate signature storage failure, not AKD failure
+                let mut repo = self.namespace_repository.write().await;
+                repo.update_namespace(namespace_info.update_status(NamespaceStatus::SignatureLost))
+                    .await?;
+            }
+            _ => {
+                error!(
+                    namespace = namespace_info.name,
+                    epoch = blob_name.epoch,
+                    blob_name = blob_name.to_string(),
+                    error = %error,
+                    "Audit request failed - stopping further processing for this namespace"
+                );
+                // Update namespace status to indicate failure
+                let mut repo = self.namespace_repository.write().await;
+                repo.update_namespace(
+                    namespace_info.update_status(NamespaceStatus::SignatureVerificationFailed),
+                )
+                .await?;
+            }
+        };
+        Ok(())
     }
 
     /// Get fresh namespace info from the repository
@@ -267,7 +336,7 @@ where
         &mut self,
         blob_name: &SerializableAuditBlobName,
         namespace_info: &NamespaceInfo,
-    ) -> Result<()> {
+    ) -> Result<(), AuditError> {
         // Skip epochs before the starting epoch
         if blob_name.epoch < *namespace_info.starting_epoch.value() {
             trace!(
@@ -299,15 +368,16 @@ where
     }
 
     /// Retrieves and verifies an existing signature for the given epoch
-    /// Returns Ok(Some(signature)) if found and valid, Ok(None) if not found, or Err if found but invalid
-    async fn get_and_verify_signature(&self, epoch: &u64) -> Result<Option<EpochSignature>> {
+    /// Returns Ok(Some(signature)) if found and valid, Ok(None) if not found, or Err on error or if found, but invalid
+    async fn get_and_verify_signature(
+        &self,
+        epoch: &u64,
+    ) -> Result<Option<EpochSignature>, AuditError> {
         if let Some(signature) = self.signature_storage.get_signature(&epoch).await? {
             // Verify the signature
             let singing_key_repository = self.signing_key_repository.read().await;
             let verifying_repo = singing_key_repository.verifying_key_repository()?;
-            signature.verify(&verifying_repo).await.map_err(|e| {
-                anyhow::anyhow!("Signature verification failed for epoch {}: {}", epoch, e)
-            })?;
+            signature.verify(&verifying_repo).await?;
 
             Ok(Some(signature))
         } else {
@@ -319,7 +389,7 @@ where
         &self,
         blob_name: &SerializableAuditBlobName,
         namespace_info: &NamespaceInfo,
-    ) -> Result<()> {
+    ) -> Result<(), AuditError> {
         // download the blob
         let audit_blob = AkdStorageFactory::create_storage(&namespace_info)
             .get_proof(&blob_name.into())
@@ -333,7 +403,7 @@ where
         // decode the blob
         let (end_epoch, previous_hash_from_blob, end_hash, proof) = audit_blob
             .decode()
-            .map_err(|e| anyhow::anyhow!("Failed to decode audit blob: {:?}", e))?;
+            .map_err(|e| AuditError::LocalAuditorError(e))?;
 
         // Get and verify the previous epoch's signature to establish the chain
         let previous_hash = if blob_name.epoch == *namespace_info.starting_epoch.value() {
@@ -347,13 +417,7 @@ where
             let previous_signature = self
                 .get_and_verify_signature(&previous_epoch)
                 .await?
-                .ok_or_else(|| {
-                    anyhow::anyhow!(
-                        "Previous epoch {} signature not found when auditing epoch {}",
-                        previous_epoch,
-                        blob_name.epoch
-                    )
-                })?;
+                .ok_or_else(|| AuditError::SignatureNotFound(previous_epoch.into()))?;
 
             trace!(
                 namespace = namespace_info.name,
@@ -381,7 +445,7 @@ where
         &mut self,
         blob_name: &SerializableAuditBlobName,
         namespace_info: &NamespaceInfo,
-    ) -> Result<()> {
+    ) -> Result<(), AuditError> {
         let current_signing_key = self
             .signing_key_repository
             .read()
@@ -729,7 +793,7 @@ mod tests {
             result
                 .unwrap_err()
                 .to_string()
-                .contains("Previous epoch 1 signature not found")
+                .contains("Signature not found for epoch 1"),
         );
     }
 

@@ -11,8 +11,7 @@ mod versions;
 pub use akd_configurations::BitwardenV1Configuration;
 pub use audit_blob_name::SerializableAuditBlobName;
 use chrono::Duration;
-pub use epoch_signature::EpochSignature;
-pub use error::AkdWatchError;
+pub use epoch_signature::{EpochSignature, SignError, VerifyError};
 pub use namespace_info::*;
 use tokio::time::Instant;
 pub use versions::*;
@@ -43,11 +42,11 @@ pub async fn tic_toc<T>(f: impl core::future::Future<Output = T>) -> T {
 /// Macro to log timed events with tracing
 /// This macro captures the duration of an async operation and logs it at the specified level.
 /// It returns a future that must be awaited.
-/// 
+///
 /// Usage:
 /// ```rust,no_run
 /// use akd_watch_common::timed_event;
-/// 
+///
 /// async fn example() {
 ///     // Basic usage with just a future (note the .await)
 ///     let result = timed_event!(INFO, some_async_function()).await;
@@ -59,14 +58,14 @@ pub async fn tic_toc<T>(f: impl core::future::Future<Output = T>) -> T {
 ///     let result = timed_event!(INFO, some_async_function(); user_id = 123, "Query completed").await;
 ///     
 ///     // Result-aware logging - access the result value in logging
-///     let result = timed_event!(with_result(res) INFO, some_function(); 
+///     let result = timed_event!(with_result(res) INFO, some_function();
 ///                               result_len = res.len(), "Operation completed").await;
 ///     
 ///     // Result-aware logging with just the result value
-///     let status = timed_event!(with_result(code) INFO, get_status_code(); 
+///     let status = timed_event!(with_result(code) INFO, get_status_code();
 ///                               status_code = *code).await;
 /// }
-/// 
+///
 /// async fn some_async_function() -> i32 { 42 }
 /// async fn some_function() -> String { "success".to_string() }
 /// async fn get_status_code() -> u16 { 200 }
@@ -89,7 +88,7 @@ macro_rules! timed_event {
             result
         }
     };
-    
+
     // Level, future, and message
     ($level:ident, $future:expr; $message:literal) => {
         async {
@@ -106,7 +105,7 @@ macro_rules! timed_event {
             result
         }
     };
-    
+
     // Level, future, and fields (no message)
     ($level:ident, $future:expr; $($field:ident = $value:expr),+ $(,)?) => {
         async {
@@ -123,7 +122,7 @@ macro_rules! timed_event {
             result
         }
     };
-    
+
     // Level, future, message, and fields
     ($level:ident, $future:expr; $($field:ident = $value:expr),+ , $message:literal $(,)?) => {
         async {
@@ -217,7 +216,7 @@ macro_rules! timed_event {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tokio::time::{sleep, Duration as TokioDuration};
+    use tokio::time::{Duration as TokioDuration, sleep};
 
     #[tokio::test]
     async fn test_tic_toc() {
@@ -291,7 +290,8 @@ mod tests {
     #[tokio::test]
     async fn test_timed_event_with_complex_future_and_fields() {
         let result = timed_event!(DEBUG, complex_async_function(100); 
-                                  operation = "database_query", query_id = 123).await;
+                                  operation = "database_query", query_id = 123)
+        .await;
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "Value: 100");
     }
@@ -320,7 +320,8 @@ mod tests {
     #[tokio::test]
     async fn test_timed_event_result_aware_with_message() {
         let result = timed_event!(with_result(res) INFO, async { "success".to_string() }; 
-                                  result_len = res.len(), "Operation completed").await;
+                                  result_len = res.len(), "Operation completed")
+        .await;
         assert_eq!(result, "success");
     }
 
@@ -328,26 +329,31 @@ mod tests {
     async fn test_timed_event_result_aware_with_complex_function() {
         let result = timed_event!(with_result(res) INFO, complex_async_function(100); 
                                   operation = "complex", 
-                                  success = res.is_ok(), "Complex operation completed").await;
+                                  success = res.is_ok(), "Complex operation completed")
+        .await;
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "Value: 100");
     }
 
     #[tokio::test]
     async fn test_timed_event_result_aware_error_case() {
-        let result = timed_event!(with_result(res) WARN, complex_async_function(-1); 
+        let result = timed_event!(with_result(res) WARN, complex_async_function(-1);
                                   operation = "complex",
-                                  has_error = res.is_err(), "Complex operation completed").await;
+                                  has_error = res.is_err(), "Complex operation completed")
+        .await;
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), "Invalid value");
     }
 
-    #[tokio::test] 
+    #[tokio::test]
     async fn test_timed_event_result_aware_status_code() {
-        async fn get_status() -> u16 { 404 }
-        
-        let status = timed_event!(with_result(code) WARN, get_status(); 
-                                  status_code = *code, "HTTP request completed").await;
+        async fn get_status() -> u16 {
+            404
+        }
+
+        let status = timed_event!(with_result(code) WARN, get_status();
+                                  status_code = *code, "HTTP request completed")
+        .await;
         assert_eq!(status, 404);
     }
 

@@ -1,22 +1,26 @@
-use ed25519_dalek::Verifier;
+use std::array::TryFromSliceError;
+
 use ed25519_dalek::ed25519::signature::SignerMut;
+use ed25519_dalek::{SignatureError, Verifier};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::{
-    AkdWatchError, Ciphersuite, Epoch, NamespaceInfo,
+    Ciphersuite, Epoch, NamespaceInfo,
     crypto::{SigningKey, VerifyingKey},
+    error::SerializationError,
     storage::signing_keys::VerifyingKeyRepository,
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "audit_version")]
 pub enum EpochSignature {
+    #[allow(private_interfaces)]
     V1(EpochSignatureV1),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct EpochSignatureV1 {
+struct EpochSignatureV1 {
     ciphersuite: Ciphersuite,
     namespace: String,
     timestamp: i64,
@@ -26,42 +30,51 @@ pub struct EpochSignatureV1 {
     key_id: Uuid,
 }
 
-impl EpochSignatureV1 {
-    pub fn from_message(message: EpochSignedMessage, signature: Vec<u8>, key_id: Uuid) -> Self {
-        Self {
-            ciphersuite: message.ciphersuite,
-            namespace: message.namespace,
-            timestamp: message.timestamp,
-            epoch: message.epoch,
-            digest: message.digest,
-            signature,
-            key_id,
-        }
-    }
+#[derive(Debug, thiserror::Error)]
+pub enum VerifyError {
+    #[error("Signature verification failed")]
+    SignatureVerificationFailed(#[from] SignatureError),
+    #[error("Signature length error: expected {expected}, got {actual}")]
+    SignatureLengthError { expected: usize, actual: usize },
+    #[error("Serialization error: {0}")]
+    SerializationError(#[from] SerializationError),
+    #[error("Verifying key not found with key id: {0}")]
+    VerifyingKeyNotFound(Uuid),
+    #[error("Verifying key repository error: {0}")]
+    VerifyingKeyRepositoryError(#[from] crate::storage::signing_keys::VerifyingKeyRepositoryError),
+}
 
-    pub fn verify(&self, verifying_key: &VerifyingKey) -> Result<(), AkdWatchError> {
+#[derive(Debug, thiserror::Error)]
+pub enum SignError {
+    // #[error("Signing error: {0}")]
+    // SigningError(String),
+    #[error("Serialization error: {0}")]
+    SerializationError(#[from] SerializationError),
+    // #[error("Signing key repository error: {0}")]
+    // SigningKeyRepositoryError(#[from] crate::storage::signing_keys::SigningKeyRepositoryError),
+    // #[error("Generic error: {0}")]
+    // GenericError(String),
+}
+
+impl EpochSignatureV1 {
+    fn verify(&self, verifying_key: &VerifyingKey) -> Result<(), VerifyError> {
         let message = self.to_message().to_vec()?;
 
         let signature =
             ed25519_dalek::Signature::from_bytes(self.signature.as_slice().try_into().map_err(
-                |_| AkdWatchError::SignatureLengthError {
+                |_| VerifyError::SignatureLengthError {
                     expected: 64,
                     actual: self.signature.len(),
                 },
             )?);
 
-        if verifying_key
+        verifying_key
             .verifying_key
             .verify(&message.to_vec(), &signature)
-            .is_err()
-        {
-            return Err(AkdWatchError::SignatureVerificationFailed);
-        }
-
-        Ok(())
+            .map_err(VerifyError::from)
     }
 
-    pub fn to_message(&self) -> EpochSignedMessage {
+    fn to_message(&self) -> EpochSignedMessage {
         EpochSignedMessage {
             ciphersuite: self.ciphersuite,
             namespace: self.namespace.clone(),
@@ -82,7 +95,7 @@ pub struct EpochSignedMessage {
 }
 
 impl EpochSignedMessage {
-    pub fn to_vec(&self) -> Result<Vec<u8>, AkdWatchError> {
+    pub fn to_vec(&self) -> Result<Vec<u8>, SerializationError> {
         match self.ciphersuite {
             Ciphersuite::ProtobufEd25519 => {
                 // Serialize the message to a protobuf format
@@ -91,9 +104,12 @@ impl EpochSignedMessage {
             }
             Ciphersuite::JsonEd25519 => {
                 // Serialize the message to a JSON format
-                serde_json::to_vec(&self).map_err(AkdWatchError::SerdeJsonError)
+                Ok(serde_json::to_vec(&self)?)
             }
-            _ => Err(AkdWatchError::UnsupportedCiphersuite(self.ciphersuite)),
+            _ => Err(SerializationError::UnknownFormat(format!(
+                "{:?}",
+                self.ciphersuite
+            ))),
         }
     }
 }
@@ -104,7 +120,7 @@ impl EpochSignature {
         epoch: Epoch,
         epoch_root_hash: [u8; 32],
         signing_key: &SigningKey,
-    ) -> Result<Self, AkdWatchError> {
+    ) -> Result<Self, SignError> {
         let message = EpochSignedMessage {
             ciphersuite: Ciphersuite::default(),
             namespace: namespace.name.clone(),
@@ -115,7 +131,7 @@ impl EpochSignature {
         let signature = signing_key
             .signing_key()
             .write()
-            .map_err(|_| AkdWatchError::PoisonedSigningKey)?
+            .expect("Poisoned signing key")
             .sign(&message.to_vec()?);
         Ok(EpochSignature::V1(EpochSignatureV1 {
             ciphersuite: message.ciphersuite,
@@ -138,13 +154,9 @@ impl EpochSignature {
         hex::encode(self.digest())
     }
 
-    pub fn epoch_root_hash(&self) -> Result<[u8; 32], AkdWatchError> {
+    pub fn epoch_root_hash(&self) -> Result<[u8; 32], TryFromSliceError> {
         match self {
-            EpochSignature::V1(signature) => signature
-                .digest
-                .as_slice()
-                .try_into()
-                .map_err(|_| AkdWatchError::EpochRootHashParseError(signature.digest.clone())),
+            EpochSignature::V1(signature) => signature.digest.as_slice().try_into(),
         }
     }
 
@@ -157,12 +169,12 @@ impl EpochSignature {
     pub async fn verify(
         &self,
         verifying_key_repo: &impl VerifyingKeyRepository,
-    ) -> Result<(), AkdWatchError> {
+    ) -> Result<(), VerifyError> {
         let signing_key_id = self.signing_key_id();
         let verifying_key = verifying_key_repo
             .get_verifying_key(signing_key_id)
-            .await.unwrap()
-            .ok_or_else(|| AkdWatchError::VerifyingKeyNotFound(signing_key_id))?;
+            .await?
+            .ok_or_else(|| VerifyError::VerifyingKeyNotFound(signing_key_id))?;
 
         match self {
             EpochSignature::V1(signature) => signature.verify(&verifying_key),

@@ -8,7 +8,7 @@ use std::{
 
 use akd::local_auditing::{AuditBlob, AuditBlobName};
 
-use crate::storage::{AkdStorage, AkdStorageError};
+use crate::storage::{AkdProofDirectoryError, AkdProofNameError, AkdStorage};
 
 /// Test-only AKD storage implementation that stores proofs in memory.
 /// This allows for testing without relying on external services.
@@ -60,7 +60,7 @@ impl AkdStorage for TestAkdStorage {
         epoch > &0 && epoch <= &100
     }
 
-    async fn get_proof(&self, name: &AuditBlobName) -> Result<AuditBlob, AkdStorageError> {
+    async fn get_proof(&self, name: &AuditBlobName) -> Result<AuditBlob, AkdProofDirectoryError> {
         if self.has_proof(&name.epoch).await {
             use akd::SingleAppendOnlyProof;
 
@@ -73,26 +73,25 @@ impl AkdStorage for TestAkdStorage {
                     unchanged_nodes: vec![],
                 },
             )
-            .map_err(|_| AkdStorageError::Custom("Failed to create empty proof".to_string()))?)
+            .map_err(|_| {
+                AkdProofDirectoryError::Custom("Failed to create empty proof".to_string())
+            })?)
         } else {
-            Err(AkdStorageError::Custom(format!(
+            Err(AkdProofDirectoryError::Custom(format!(
                 "No proof found for blob name: {}",
                 name.to_string()
             )))
         }
     }
 
-    async fn get_proof_name(&self, epoch: &u64) -> Result<AuditBlobName, AkdStorageError> {
+    async fn get_proof_name(&self, epoch: &u64) -> Result<AuditBlobName, AkdProofNameError> {
         if self.has_proof(epoch).await {
             AuditBlobName::try_from(
                 format!("{}/{}/{}", epoch, Self::hex(*epoch), Self::hex(*epoch)).as_str(),
             )
-            .map_err(|_| AkdStorageError::Custom("Invalid blob name format".to_string()))
+            .map_err(|_| AkdProofNameError::AuditBlobNameParsingError)
         } else {
-            Err(AkdStorageError::Custom(format!(
-                "No proof found for epoch {}",
-                epoch
-            )))
+            Err(AkdProofNameError::ProofNotFound(epoch.clone()))
         }
     }
 }

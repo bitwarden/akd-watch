@@ -2,8 +2,6 @@ use std::fmt::Display;
 
 use serde::{Deserialize, Serialize};
 
-use crate::AkdWatchError;
-
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(into = "u32")]
 #[serde(from = "u32")]
@@ -110,12 +108,11 @@ impl Display for Epoch {
 }
 
 impl TryFrom<String> for Epoch {
-    type Error = AkdWatchError;
+    type Error = std::num::ParseIntError;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
         value
             .parse::<u64>()
             .map(Epoch)
-            .map_err(|e| AkdWatchError::EpochParseError(e))
     }
 }

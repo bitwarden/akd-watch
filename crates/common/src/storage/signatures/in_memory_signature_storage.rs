@@ -23,10 +23,7 @@ impl InMemorySignatureStorage {
 
 impl SignatureStorage for InMemorySignatureStorage {
     async fn has_signature(&self, epoch: &u64) -> Result<bool, SignatureStorageError> {
-        let signatures = self
-            .signatures
-            .read()
-            .map_err(|e| SignatureStorageError::Custom(e.to_string()))?;
+        let signatures = self.signatures.read().expect("Poisoned signature storage");
         Ok(signatures.contains_key(epoch))
     }
     async fn get_signature(
@@ -36,7 +33,7 @@ impl SignatureStorage for InMemorySignatureStorage {
         let result = self
             .signatures
             .read()
-            .map_err(|e| SignatureStorageError::Custom(e.to_string()))?
+            .expect("Poisoned signature storage")
             .get(epoch)
             .cloned();
         Ok(result)
@@ -49,7 +46,7 @@ impl SignatureStorage for InMemorySignatureStorage {
     ) -> Result<(), SignatureStorageError> {
         self.signatures
             .write()
-            .map_err(|e| SignatureStorageError::Custom(e.to_string()))?
+            .expect("Poisoned signature storage")
             .insert(*epoch, signature);
         Ok(())
     }

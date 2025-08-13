@@ -25,10 +25,14 @@ pub trait SignatureStorage: Clone + Debug + Send + Sync {
 
 #[derive(Debug, thiserror::Error)]
 pub enum SignatureStorageError {
-    #[error("Signature storage error: {0}")]
-    Custom(String),
-    #[error("IO error: {0}")]
-    IoError(#[from] std::io::Error),
+    #[error("{0}")]
+    SignatureStorageFileError(#[from] SignatureStorageFileError),
     #[error("Serialization error: {0}")]
     SerializationError(#[from] serde_json::Error),
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum SignatureStorageFileError {
+    #[error("IO error: {0}")]
+    IoError(#[from] std::io::Error),
 }

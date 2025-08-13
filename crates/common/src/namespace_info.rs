@@ -14,6 +14,15 @@ pub enum NamespaceStatus {
     SignatureVerificationFailed,
 }
 
+impl NamespaceStatus {
+    pub fn is_active(&self) -> bool {
+        matches!(
+            self,
+            NamespaceStatus::Online | NamespaceStatus::Initialization
+        )
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NamespaceInfo {
     pub configuration: AkdConfiguration,

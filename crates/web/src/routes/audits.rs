@@ -25,7 +25,7 @@ pub async fn handle_audit_query(
         ciphersuite: Ciphersuite::default(),
         namespace,
         timestamp: 0,
-        epoch: epoch.try_into()?,
+        epoch: epoch.try_into().map_err(|_| ApiError::BadRequest("epoch is not an integer".to_string()))?,
         digest: vec![],
         signature: vec![],
         key_id: None,

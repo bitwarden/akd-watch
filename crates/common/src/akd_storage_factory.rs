@@ -38,7 +38,7 @@ impl AkdStorage for AkdStorageImpl {
     async fn get_proof_name(
         &self,
         epoch: &u64,
-    ) -> Result<akd::local_auditing::AuditBlobName, crate::storage::AkdStorageError> {
+    ) -> Result<akd::local_auditing::AuditBlobName, crate::storage::AkdProofNameError> {
         match self {
             AkdStorageImpl::WhatsApp(storage) => storage.get_proof_name(epoch).await,
             #[cfg(any(test, feature = "testing"))]
@@ -49,7 +49,7 @@ impl AkdStorage for AkdStorageImpl {
     async fn get_proof(
         &self,
         name: &akd::local_auditing::AuditBlobName,
-    ) -> Result<akd::local_auditing::AuditBlob, crate::storage::AkdStorageError> {
+    ) -> Result<akd::local_auditing::AuditBlob, crate::storage::AkdProofDirectoryError> {
         match self {
             AkdStorageImpl::WhatsApp(storage) => storage.get_proof(name).await,
             #[cfg(any(test, feature = "testing"))]

@@ -1,6 +1,6 @@
 use crate::{
     epoch_signature::EpochSignature,
-    storage::signatures::{SignatureStorage, SignatureStorageError},
+    storage::signatures::{SignatureStorage, SignatureStorageError, SignatureStorageFileError},
 };
 
 #[derive(Clone, Debug)]
@@ -51,8 +51,8 @@ impl SignatureStorage for FilesystemSignatureStorage {
     ) -> Result<Option<EpochSignature>, SignatureStorageError> {
         let signature_path = self.get_existing_signature_path(epoch);
         if let Some(path) = signature_path {
-            let content =
-                std::fs::read_to_string(&path).map_err(|e| SignatureStorageError::IoError(e))?;
+            let content = std::fs::read_to_string(&path)
+                .map_err(|e| SignatureStorageFileError::IoError(e))?;
             let signature: EpochSignature = serde_json::from_str(&content)
                 .map_err(|e| SignatureStorageError::SerializationError(e))?;
             Ok(Some(signature))
@@ -69,7 +69,7 @@ impl SignatureStorage for FilesystemSignatureStorage {
         let epoch_dir = self.epoch_path(epoch);
 
         // ensure the epoch directory is created
-        std::fs::create_dir_all(&epoch_dir).map_err(|e| SignatureStorageError::IoError(e))?;
+        std::fs::create_dir_all(&epoch_dir).map_err(|e| SignatureStorageFileError::IoError(e))?;
 
         // Write the signature to a file in the epoch directory
         let signature_path = format!("{}/{}.json", epoch_dir, signature.digest_hex());
@@ -78,7 +78,7 @@ impl SignatureStorage for FilesystemSignatureStorage {
             serde_json::to_string(&signature)
                 .map_err(|e| SignatureStorageError::SerializationError(e))?,
         )
-        .map_err(|e| SignatureStorageError::IoError(e))?;
+        .map_err(|e| SignatureStorageFileError::IoError(e))?;
 
         // Return Ok if everything succeeded
         Ok(())

@@ -6,7 +6,7 @@ use quick_xml::events::Event;
 use reqwest::header::CACHE_CONTROL;
 use tracing::instrument;
 
-use crate::storage::{AkdStorage, AkdStorageError};
+use crate::storage::{AkdProofDirectoryError, AkdProofNameError, AkdStorage};
 
 #[derive(Debug, Clone)]
 pub struct WhatsAppAkdStorage {
@@ -33,7 +33,10 @@ impl Display for WhatsAppAkdStorage {
 }
 
 impl WhatsAppAkdStorage {
-    async fn get_key_for_epoch(&self, epoch: &u64) -> Result<Option<String>, AkdStorageError> {
+    async fn get_key_for_epoch(
+        &self,
+        epoch: &u64,
+    ) -> Result<Option<String>, AkdProofDirectoryError> {
         let url = format!("{}/?list-type=2&prefix={}/", self.base_url, epoch);
         // make a client with no chache
         let client = reqwest::Client::new();
@@ -42,11 +45,9 @@ impl WhatsAppAkdStorage {
             .get(url)
             .header(CACHE_CONTROL, "no-store")
             .send()
-            .await
-            .map_err(|e| AkdStorageError::Custom(format!("Request failed: {}", e)))?
+            .await?
             .bytes()
-            .await
-            .map_err(|e| AkdStorageError::Custom(format!("Failed to read response: {}", e)))?;
+            .await?;
 
         let mut reader = Reader::from_reader(resp.as_ref());
         let mut buf = Vec::new();
@@ -56,14 +57,12 @@ impl WhatsAppAkdStorage {
                 Ok(Event::Start(ref e)) if e.name().as_ref() == b"Key" => {
                     // Read the key content
                     if let Ok(Event::Text(e)) = reader.read_event_into(&mut buf) {
-                        let key_text = std::str::from_utf8(e.as_ref()).map_err(|e| {
-                            AkdStorageError::Custom(format!("UTF-8 parsing error: {}", e))
-                        })?;
+                        let key_text = std::str::from_utf8(e.as_ref())?;
                         return Ok(Some(key_text.to_string()));
                     }
                 }
                 Ok(Event::Eof) => break,
-                Err(e) => return Err(AkdStorageError::Custom(format!("XML parsing error: {}", e))),
+                Err(e) => return Err(e)?,
                 _ => (),
             }
             buf.clear();
@@ -83,14 +82,9 @@ impl AkdStorage for WhatsAppAkdStorage {
     }
 
     #[instrument(level = "info", skip_all, fields(base_url = self.base_url, epoch = name.epoch))]
-    async fn get_proof(&self, name: &AuditBlobName) -> Result<AuditBlob, AkdStorageError> {
+    async fn get_proof(&self, name: &AuditBlobName) -> Result<AuditBlob, AkdProofDirectoryError> {
         let url = format!("{}/{}", self.base_url, name.to_string());
-        let resp = reqwest::get(url)
-            .await
-            .map_err(|e| AkdStorageError::Custom(format!("Request failed: {}", e)))?
-            .bytes()
-            .await
-            .map_err(|e| AkdStorageError::Custom(format!("Failed to read response: {}", e)))?;
+        let resp = reqwest::get(url).await?.bytes().await?;
         let data = resp.to_vec();
 
         Ok(AuditBlob {
@@ -100,14 +94,11 @@ impl AkdStorage for WhatsAppAkdStorage {
     }
 
     #[instrument(level = "info", skip_all, fields(base_url = self.base_url, epoch = epoch))]
-    async fn get_proof_name(&self, epoch: &u64) -> Result<AuditBlobName, AkdStorageError> {
+    async fn get_proof_name(&self, epoch: &u64) -> Result<AuditBlobName, AkdProofNameError> {
         match self.get_key_for_epoch(epoch).await? {
             Some(key) => AuditBlobName::try_from(key.as_str())
-                .map_err(|_| AkdStorageError::Custom("Invalid blob name format".to_string())),
-            None => Err(AkdStorageError::Custom(format!(
-                "No proof found for epoch {}",
-                epoch
-            ))),
+                .map_err(|_| AkdProofNameError::AuditBlobNameParsingError),
+            None => Err(AkdProofNameError::ProofNotFound(epoch.clone())),
         }
     }
 }
@@ -274,7 +265,7 @@ mod tests {
                 let error_message = format!("{}", e);
                 assert!(
                     error_message
-                        .contains(&format!("No proof found for epoch {}", nonexistent_epoch)),
+                        .contains(&format!("Proof not found for epoch {}", nonexistent_epoch)),
                     "Error message should indicate epoch not found: {}",
                     error_message
                 );

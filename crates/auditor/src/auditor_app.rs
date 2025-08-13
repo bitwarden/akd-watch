@@ -25,13 +25,7 @@ pub struct AuditorApp<NR, SKR, SS> {
     shutdown_tx: broadcast::Sender<()>,
 }
 
-impl
-    AuditorApp<
-        InMemoryNamespaceRepository,
-        FileSigningKeyRepository,
-        FilesystemSignatureStorage,
-    >
-{
+impl AuditorApp<InMemoryNamespaceRepository, FileSigningKeyRepository, FilesystemSignatureStorage> {
     /// Build the auditor application from configuration
     pub async fn from_config(config: AuditorConfig) -> Result<Self> {
         info!(

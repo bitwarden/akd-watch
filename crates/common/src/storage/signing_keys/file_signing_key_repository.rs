@@ -11,7 +11,10 @@ use uuid::Uuid;
 
 use crate::{
     crypto::{SigningKey, VerifyingKey},
-    storage::signing_keys::{SigningKeyRepository, SigningKeyRepositoryError, VerifyingKeyRepository, VerifyingKeyRepositoryError},
+    storage::signing_keys::{
+        SigningKeyRepository, SigningKeyRepositoryError, VerifyingKeyRepository,
+        VerifyingKeyRepositoryError,
+    },
 };
 
 #[derive(Clone, Debug)]
@@ -31,10 +34,16 @@ impl KeyState {
     fn to_verifying_keys(&self) -> Result<Vec<VerifyingKey>, SigningKeyRepositoryError> {
         let mut result = vec![];
         for key in &self.expired_keys {
-            let verifying_key = key.verifying_key().map_err(|e| SigningKeyRepositoryError::Custom(e))?;
+            let verifying_key = key
+                .verifying_key()
+                .map_err(|e| SigningKeyRepositoryError::Custom(e))?;
             result.push(verifying_key);
         }
-        result.push(self.current_signing_key.verifying_key().map_err(|e| SigningKeyRepositoryError::Custom(e))?);
+        result.push(
+            self.current_signing_key
+                .verifying_key()
+                .map_err(|e| SigningKeyRepositoryError::Custom(e))?,
+        );
         Ok(result)
     }
 }
@@ -42,24 +51,26 @@ impl KeyState {
 impl FileSigningKeyRepository {
     pub fn new(directory: String, key_lifetime: Duration) -> Self {
         // Load from file if it exists, otherwise create a new one
-        let initial_key_state = if std::path::Path::new(&Self::_signing_key_path(&directory)).exists() {
-            let file_content = std::fs::read_to_string(&Self::_signing_key_path(&directory))
-                .expect("Failed to read signing key file");
-            serde_json::from_str::<KeyState>(&file_content)
-                .expect("Failed to deserialize signing key state")
-        } else {
-            KeyState {
-                current_signing_key: SigningKey::generate(key_lifetime),
-                expired_keys: Vec::new(),
-            }
-        };
+        let initial_key_state =
+            if std::path::Path::new(&Self::_signing_key_path(&directory)).exists() {
+                let file_content = std::fs::read_to_string(&Self::_signing_key_path(&directory))
+                    .expect("Failed to read signing key file");
+                serde_json::from_str::<KeyState>(&file_content)
+                    .expect("Failed to deserialize signing key state")
+            } else {
+                KeyState {
+                    current_signing_key: SigningKey::generate(key_lifetime),
+                    expired_keys: Vec::new(),
+                }
+            };
 
         let new = Self {
             directory,
             keys: Arc::new(Mutex::new(initial_key_state)),
             key_lifetime,
         };
-        new.persist().expect("Failed to persist initial signing key");
+        new.persist()
+            .expect("Failed to persist initial signing key");
         new
     }
 
@@ -85,10 +96,8 @@ impl FileSigningKeyRepository {
 
         // Replace current key with new one and get the old key to expire
         let new_key = SigningKey::generate(self.key_lifetime);
-        let mut existing_key = std::mem::replace(
-            &mut key_state.current_signing_key,
-            new_key.clone(),
-        );
+        let mut existing_key =
+            std::mem::replace(&mut key_state.current_signing_key, new_key.clone());
         existing_key.expire();
 
         key_state.expired_keys.push(existing_key);
@@ -112,7 +121,8 @@ impl FileSigningKeyRepository {
         let verifying_path = self.verifying_key_path();
         let serialized_verifying = serde_json::to_string(&verifying_keys)?;
         debug!("Persisting verifying keys to {}", verifying_path);
-        std::fs::write(verifying_path, serialized_verifying).map_err(SigningKeyRepositoryError::IoError)?;
+        std::fs::write(verifying_path, serialized_verifying)
+            .map_err(SigningKeyRepositoryError::IoError)?;
         Ok(())
     }
 }
@@ -140,7 +150,9 @@ impl SigningKeyRepository for FileSigningKeyRepository {
         Ok(())
     }
 
-    fn verifying_key_repository(&self) -> Result<impl VerifyingKeyRepository, SigningKeyRepositoryError> {
+    fn verifying_key_repository(
+        &self,
+    ) -> Result<impl VerifyingKeyRepository, SigningKeyRepositoryError> {
         Ok(FileVerifyingKeyRepository::new(self.verifying_key_path())?)
     }
 }
@@ -168,8 +180,8 @@ impl FileVerifyingKeyRepository {
 
     fn populate_in_memory_map(&self) -> Result<(), VerifyingKeyRepositoryError> {
         let mut keys = self.verifying_keys.lock().expect("Mutex poisoned");
-        let file_content = std::fs::read_to_string(&self.path)
-            .map_err(VerifyingKeyRepositoryError::IoError)?;
+        let file_content =
+            std::fs::read_to_string(&self.path).map_err(VerifyingKeyRepositoryError::IoError)?;
         let verifying_keys: Vec<VerifyingKey> = serde_json::from_str(&file_content)
             .map_err(VerifyingKeyRepositoryError::SerializationError)?;
         for key in verifying_keys {
@@ -180,7 +192,10 @@ impl FileVerifyingKeyRepository {
 }
 
 impl VerifyingKeyRepository for FileVerifyingKeyRepository {
-    async fn get_verifying_key(&self, key_id: Uuid) -> Result<Option<VerifyingKey>, VerifyingKeyRepositoryError> {
+    async fn get_verifying_key(
+        &self,
+        key_id: Uuid,
+    ) -> Result<Option<VerifyingKey>, VerifyingKeyRepositoryError> {
         // If the key is in the map, return it
         if let Some(key) = self.get_verifying_key_from_memory(key_id) {
             return Ok(Some(key));

@@ -5,8 +5,6 @@ use std::sync::{Arc, RwLock};
 
 use uuid::Uuid;
 
-use crate::AkdWatchError;
-
 #[derive(Clone, Debug)]
 pub struct SigningKey {
     signing_key: Arc<RwLock<ed25519_dalek::SigningKey>>,
@@ -68,7 +66,6 @@ impl SigningKey {
     }
 }
 
-
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SerializableSigningKey {
     pub signing_key: ed25519_dalek::SigningKey,
@@ -86,18 +83,17 @@ impl From<SerializableSigningKey> for SigningKey {
     }
 }
 
-impl TryFrom<SigningKey> for SerializableSigningKey {
-    type Error = AkdWatchError;
-
-    fn try_from(value: SigningKey) -> Result<Self, Self::Error> {
-        Ok(SerializableSigningKey {
+impl From<SigningKey> for SerializableSigningKey {
+    fn from(value: SigningKey) -> Self {
+        SerializableSigningKey {
             signing_key: value
                 .signing_key
                 .read()
-                .map_err(|_| AkdWatchError::PoisonedSigningKey)?.clone(),
+                .expect("Poisoned Signing Key Cache")
+                .clone(),
             key_id: value.key_id,
             not_after_date: value.not_after_date,
-        })
+        }
     }
 }
 
@@ -106,8 +102,8 @@ impl Serialize for SigningKey {
     where
         S: serde::Serializer,
     {
-        let serializable = SerializableSigningKey::try_from(self.clone())
-            .map_err(serde::ser::Error::custom)?;
+        let serializable =
+            SerializableSigningKey::try_from(self.clone()).map_err(serde::ser::Error::custom)?;
         serializable.serialize(serializer)
     }
 }
