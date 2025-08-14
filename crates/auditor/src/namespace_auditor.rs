@@ -674,7 +674,6 @@ mod tests {
         );
     }
 
-    // TODO: Test akd polling and processing
     #[tokio::test]
     async fn test_poll_for_new_epochs() {
         let (namespace_repo, signing_key_repo, signature_storage, shutdown_rx, _shutdown_tx) =
