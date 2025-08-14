@@ -27,8 +27,10 @@ pub trait SignatureStorage: Clone + Debug + Send + Sync {
 pub enum SignatureStorageError {
     #[error("{0}")]
     SignatureStorageFileError(#[from] SignatureStorageFileError),
-    #[error("Serialization error: {0}")]
-    SerializationError(#[from] serde_json::Error),
+    #[error("Bincode serialization error: {0}")]
+    BincodeError(#[from] bincode::error::EncodeError),
+    #[error("Bincode deserialization error: {0}")]
+    BincodeDecodeError(#[from] bincode::error::DecodeError),
 }
 
 #[derive(Debug, thiserror::Error)]

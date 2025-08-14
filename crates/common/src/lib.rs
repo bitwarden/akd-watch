@@ -7,11 +7,13 @@ mod error;
 mod namespace_info;
 pub mod storage;
 mod versions;
+pub(crate) mod proto;
 
 pub use akd_configurations::BitwardenV1Configuration;
 pub use audit_blob_name::SerializableAuditBlobName;
 use chrono::Duration;
-pub use epoch_signature::{EpochSignature, SignError, VerifyError};
+pub use epoch_signature::{EpochSignature, SignError, VerifyError}; 
+pub(crate) use epoch_signature::EpochSignedMessage;
 pub use namespace_info::*;
 use tokio::time::Instant;
 pub use versions::*;
@@ -22,6 +24,11 @@ pub use akd_configurations::TestAkdConfiguration;
 // Export testing utilities when cfg(test) is enabled
 #[cfg(any(test, feature = "testing"))]
 pub mod testing;
+
+pub const BINCODE_CONFIG: bincode::config::Configuration<bincode::config::LittleEndian, bincode::config::Varint, bincode::config::NoLimit> = bincode::config::standard()
+        .with_little_endian()
+        .with_variable_int_encoding()
+        .with_no_limit();
 
 pub async fn tic_toc<T>(f: impl core::future::Future<Output = T>) -> T {
     {

@@ -1,0 +1,14 @@
+syntax = "proto2";
+package akd_watch_common.types;
+
+message Epoch {
+    required uint64 inner = 1;
+}
+
+message SignatureMessage {
+    required uint32 ciphersuite = 1;
+    required string namespace = 2;
+    required uint64 timestamp = 3;
+    required Epoch epoch = 4;
+    required bytes digest = 5;
+}

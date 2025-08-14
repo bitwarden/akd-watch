@@ -1,7 +1,9 @@
 use std::array::TryFromSliceError;
 
+use bincode::{Decode, Encode};
 use ed25519_dalek::ed25519::signature::SignerMut;
 use ed25519_dalek::{SignatureError, Verifier};
+use prost::Message;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -12,22 +14,23 @@ use crate::{
     storage::signing_keys::VerifyingKeyRepository,
 };
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Encode, Decode)]
 #[serde(tag = "audit_version")]
 pub enum EpochSignature {
     #[allow(private_interfaces)]
     V1(EpochSignatureV1),
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-struct EpochSignatureV1 {
-    ciphersuite: Ciphersuite,
-    namespace: String,
-    timestamp: i64,
-    epoch: Epoch,
-    digest: Vec<u8>,
-    signature: Vec<u8>,
-    key_id: Uuid,
+#[derive(Clone, Debug, Serialize, Deserialize, Encode, Decode)]
+pub(crate) struct EpochSignatureV1 {
+    pub(crate) ciphersuite: Ciphersuite,
+    pub(crate) namespace: String,
+    pub(crate) timestamp: i64,
+    pub(crate) epoch: Epoch,
+    pub(crate) digest: Vec<u8>,
+    pub(crate) signature: Vec<u8>,
+    #[bincode(with_serde)]
+    pub(crate) key_id: Uuid,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -85,26 +88,23 @@ impl EpochSignatureV1 {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Encode)]
 pub struct EpochSignedMessage {
-    ciphersuite: Ciphersuite,
-    namespace: String,
-    timestamp: i64,
-    epoch: Epoch,
-    digest: Vec<u8>,
+    pub(crate) ciphersuite: Ciphersuite,
+    pub(crate) namespace: String,
+    pub(crate) timestamp: i64,
+    pub(crate) epoch: Epoch,
+    pub(crate) digest: Vec<u8>,
 }
 
 impl EpochSignedMessage {
     pub fn to_vec(&self) -> Result<Vec<u8>, SerializationError> {
         match self.ciphersuite {
             Ciphersuite::ProtobufEd25519 => {
-                // Serialize the message to a protobuf format
-                // TODO: This is a placeholder; actual serialization logic will depend on the protobuf schema
-                Ok(vec![])
+                Ok(crate::proto::types::SignatureMessage::from(self).encode_to_vec())
             }
-            Ciphersuite::JsonEd25519 => {
-                // Serialize the message to a JSON format
-                Ok(serde_json::to_vec(&self)?)
+            Ciphersuite::BincodeEd25519 => {
+                Ok(bincode::encode_to_vec(self, crate::BINCODE_CONFIG)?)
             }
             _ => Err(SerializationError::UnknownFormat(format!(
                 "{:?}",
