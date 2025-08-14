@@ -57,9 +57,6 @@ where
     /// Start the auditing loop for this namespace
     #[instrument(level = "info", skip_all, fields(namespace = self.namespace_name))]
     pub async fn run(mut self) -> Result<()> {
-        // TODO: Check namespace status in repository before starting audit loop
-        // If namespace is in failed state from previous runs, we should exit this thread immediately.
-
         loop {
             let should_shutdown = self.audit_cycle().await;
             if should_shutdown {
