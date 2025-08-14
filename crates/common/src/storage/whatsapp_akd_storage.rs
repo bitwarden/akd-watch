@@ -40,7 +40,7 @@ impl WhatsAppAkdStorage {
         let url = format!("{}/?list-type=2&prefix={}/", self.base_url, epoch);
         // make a client with no chache
         let client = reqwest::Client::new();
-        // TODO: we're getting failures pulling proofs taht exist for minutes. Need to figure out why we're so far behind
+        // TODO: we're getting proofs that are delayed by minutes vs cloudflare's dashboard. Need to figure out why we're so far behind
         let resp = client
             .get(url)
             .header(CACHE_CONTROL, "no-store")
