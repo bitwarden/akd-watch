@@ -13,7 +13,7 @@ use crate::{
     crypto::{SigningKey, VerifyingKey},
     storage::signing_keys::{
         SigningKeyRepository, SigningKeyRepositoryError, VerifyingKeyRepository,
-        VerifyingKeyRepositoryError,
+        VerifyingKeyRepositoryError, VerifyingKeyStorage,
     },
 };
 
@@ -152,8 +152,8 @@ impl SigningKeyRepository for FileSigningKeyRepository {
 
     fn verifying_key_repository(
         &self,
-    ) -> Result<impl VerifyingKeyRepository, SigningKeyRepositoryError> {
-        Ok(FileVerifyingKeyRepository::new(self.verifying_key_path())?)
+    ) -> Result<VerifyingKeyStorage, SigningKeyRepositoryError> {
+        Ok(VerifyingKeyStorage::File(FileVerifyingKeyRepository::new(self.verifying_key_path())?))
     }
 }
 

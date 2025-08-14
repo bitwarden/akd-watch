@@ -1,6 +1,6 @@
 use crate::{
     epoch_signature::EpochSignature,
-    storage::signatures::{SignatureStorage, SignatureStorageError, SignatureStorageFileError}, BINCODE_CONFIG,
+    storage::signatures::{SignatureRepository, SignatureRepositoryError, SignatureStorageFileError}, BINCODE_CONFIG,
 };
 
 #[derive(Clone, Debug)]
@@ -33,8 +33,8 @@ impl FilesystemSignatureStorage {
     }
 }
 
-impl SignatureStorage for FilesystemSignatureStorage {
-    async fn has_signature(&self, epoch: &u64) -> Result<bool, SignatureStorageError> {
+impl SignatureRepository for FilesystemSignatureStorage {
+    async fn has_signature(&self, epoch: &u64) -> Result<bool, SignatureRepositoryError> {
         let signature_path = self.get_existing_signature_path(epoch);
         match signature_path {
             Some(_) => Ok(true),
@@ -45,7 +45,7 @@ impl SignatureStorage for FilesystemSignatureStorage {
     async fn get_signature(
         &self,
         epoch: &u64,
-    ) -> Result<Option<EpochSignature>, SignatureStorageError> {
+    ) -> Result<Option<EpochSignature>, SignatureRepositoryError> {
         let signature_path = self.get_existing_signature_path(epoch);
         if let Some(path) = signature_path {
             // Read the signature file to bytes
@@ -63,7 +63,7 @@ impl SignatureStorage for FilesystemSignatureStorage {
         &mut self,
         epoch: &u64,
         signature: EpochSignature,
-    ) -> Result<(), SignatureStorageError> {
+    ) -> Result<(), SignatureRepositoryError> {
         let epoch_dir = self.epoch_path(epoch);
 
         // ensure the epoch directory is created

@@ -4,9 +4,9 @@ use std::time::Duration;
 use tokio::sync::RwLock;
 
 use akd_watch_common::storage::{
-    namespaces::{FileNamespaceRepository, NamespaceRepository},
-    signatures::{FilesystemSignatureStorage, SignatureStorage},
-    signing_keys::{FileSigningKeyRepository, SigningKeyRepository},
+    namespaces::{FileNamespaceRepository, InMemoryNamespaceRepository, NamespaceRepository, NamespaceStorage},
+    signatures::{FilesystemSignatureStorage, InMemorySignatureStorage, SignatureStorage},
+    signing_keys::{FileSigningKeyRepository, SigningKeyStorage},
 };
 use anyhow::{Context, Result};
 use futures_util::future;
@@ -17,15 +17,15 @@ use crate::config::{AuditorConfig, NamespaceStorageConfig, StorageConfig};
 use crate::namespace_auditor::NamespaceAuditor;
 
 /// Main auditor application
-pub struct AuditorApp<NR, SKR, SS> {
-    namespace_repository: Arc<RwLock<NR>>,
-    signing_key_repository: Arc<RwLock<SKR>>,
-    signature_storage_map: HashMap<String, SS>,
+pub struct AuditorApp {
+    namespace_repository: Arc<RwLock<NamespaceStorage>>,
+    signing_key_repository: Arc<RwLock<SigningKeyStorage>>,
+    signature_storage_map: HashMap<String, SignatureStorage>,
     sleep_duration: Duration,
     shutdown_tx: broadcast::Sender<()>,
 }
 
-impl AuditorApp<FileNamespaceRepository, FileSigningKeyRepository, FilesystemSignatureStorage> {
+impl AuditorApp {
     /// Build the auditor application from configuration
     pub async fn from_config(config: AuditorConfig) -> Result<Self> {
         info!(
@@ -50,14 +50,7 @@ impl AuditorApp<FileNamespaceRepository, FileSigningKeyRepository, FilesystemSig
             shutdown_tx,
         })
     }
-}
 
-impl<NR, SKR, SS> AuditorApp<NR, SKR, SS>
-where
-    NR: NamespaceRepository + Send + Sync + 'static,
-    SKR: SigningKeyRepository + Send + Sync + 'static,
-    SS: SignatureStorage + Send + Sync + Clone + 'static,
-{
     /// Run the auditor application
     pub async fn run(&self) -> Result<()> {
         // Get all namespaces from the repository
@@ -131,17 +124,21 @@ where
     // Private initialization methods that can be configured based on config in the future
     async fn init_namespace_repository(
         config: &AuditorConfig,
-    ) -> Result<FileNamespaceRepository> {
-        let file_path = match &config.namespace_storage {
-            NamespaceStorageConfig::File{ state_file } => state_file.clone(),
-            _ => {
-                return Err(anyhow::anyhow!(
-                    "Unsupported namespace storage type: {:?}", config.namespace_storage
-                ));
-            }
+    ) -> Result<NamespaceStorage> {
+        let mut namespace_repository = match &config.namespace_storage {
+            NamespaceStorageConfig::File { state_file } => NamespaceStorage::File(FileNamespaceRepository::new(state_file.clone())),
+            NamespaceStorageConfig::InMemory => NamespaceStorage::InMemory(InMemoryNamespaceRepository::new())
         };
+        
+        Self::populate_namespace_repository(&mut namespace_repository, config).await?;
 
-        let mut namespace_repository = FileNamespaceRepository::new(file_path);
+        Ok(namespace_repository)
+    }
+
+    async fn populate_namespace_repository<T: NamespaceRepository>(
+        namespace_repository: &mut T,
+        config: &AuditorConfig,
+    ) -> Result<()> {
         let existing_namespaces = namespace_repository
             .list_namespaces()
             .await
@@ -181,39 +178,48 @@ where
             }
         }
 
-        Ok(namespace_repository)
+        Ok(())
     }
 
     async fn init_signature_storage(
         config: &AuditorConfig,
-    ) -> Result<HashMap<String, FilesystemSignatureStorage>> {
+    ) -> Result<HashMap<String, SignatureStorage>> {
         let mut storage_map = HashMap::new();
 
-        let storage_directory = match &config.storage {
-            StorageConfig::File { directory } => directory.clone(),
-            _ => {
+        match &config.storage {
+            StorageConfig::File { directory } => {
+                for ns_config in &config.namespaces {
+                    let ns_directory = format!("{}/{}", directory.clone(), ns_config.name.clone());
+                    storage_map.insert(
+                        ns_config.name.clone(),
+                        SignatureStorage::Filesystem(FilesystemSignatureStorage::new(ns_directory)),
+                    );
+                }
+            }
+            StorageConfig::InMemory => {
+                for ns_config in &config.namespaces {
+                    storage_map.insert(
+                        ns_config.name.clone(),
+                        SignatureStorage::InMemory(InMemorySignatureStorage::new()),
+                    );
+                }
+            }
+            StorageConfig::Azure { .. } => {
                 return Err(anyhow::anyhow!(
-                    "Unsupported storage type: {:?}",
-                    config.storage
+                    "Azure storage not yet implemented for signature storage"
                 ));
             }
-        };
-
-        for ns_config in &config.namespaces {
-            // TODO: Could configure storage type based on config in the future
-            storage_map.insert(
-                ns_config.name.clone(),
-                FilesystemSignatureStorage::new(storage_directory.clone()),
-            );
         }
 
         Ok(storage_map)
     }
 
-    fn init_signing_key_repository(config: &AuditorConfig) -> FileSigningKeyRepository {
-        FileSigningKeyRepository::new(
+    fn init_signing_key_repository(config: &AuditorConfig) -> SigningKeyStorage {
+        // For now, we'll use FileSigningKeyRepository
+        // This could be configurable in the future
+        SigningKeyStorage::File(FileSigningKeyRepository::new(
             config.signing.key_dir.clone(),
             chrono::Duration::seconds(config.signing.key_lifetime_seconds),
-        )
+        ))
     }
 }

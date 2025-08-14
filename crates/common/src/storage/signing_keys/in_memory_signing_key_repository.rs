@@ -11,7 +11,7 @@ use crate::{
     crypto::{SigningKey, VerifyingKey},
     storage::signing_keys::{
         SigningKeyRepository, SigningKeyRepositoryError, VerifyingKeyRepository,
-        VerifyingKeyRepositoryError,
+        VerifyingKeyRepositoryError, VerifyingKeyStorage,
     },
 };
 
@@ -94,7 +94,7 @@ impl SigningKeyRepository for InMemorySigningKeyRepository {
 
     fn verifying_key_repository(
         &self,
-    ) -> Result<impl VerifyingKeyRepository, SigningKeyRepositoryError> {
+    ) -> Result<VerifyingKeyStorage, SigningKeyRepositoryError> {
         let mut verifying_keys = Vec::new();
 
         let key_state = self.keys.lock().unwrap();
@@ -111,7 +111,7 @@ impl SigningKeyRepository for InMemorySigningKeyRepository {
             }
         }
 
-        Ok(InMemoryVerifyingKeyRepository::new(verifying_keys))
+        Ok(VerifyingKeyStorage::InMemory(InMemoryVerifyingKeyRepository::new(verifying_keys)))
     }
 }
 

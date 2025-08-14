@@ -8,7 +8,7 @@ use akd_watch_common::{
     akd_configurations::verify_consecutive_append_only,
     akd_storage_factory::AkdStorageFactory,
     storage::{
-        AkdStorage, namespaces::NamespaceRepository, signatures::SignatureStorage,
+        AkdStorage, namespaces::NamespaceRepository, signatures::SignatureRepository,
         signing_keys::SigningKeyRepository,
     },
 };
@@ -35,7 +35,7 @@ impl<NR, SKR, SS> NamespaceAuditor<NR, SKR, SS>
 where
     NR: NamespaceRepository + Send + Sync + 'static,
     SKR: SigningKeyRepository + Send + Sync + 'static,
-    SS: SignatureStorage + Send + Sync + 'static,
+    SS: SignatureRepository + Send + Sync + 'static,
 {
     pub fn new(
         namespace_info: NamespaceInfo,

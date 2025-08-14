@@ -5,7 +5,7 @@ use std::{
 
 use crate::{
     epoch_signature::EpochSignature,
-    storage::signatures::{SignatureStorage, SignatureStorageError},
+    storage::signatures::{SignatureRepository, SignatureRepositoryError},
 };
 
 #[derive(Clone, Debug)]
@@ -21,15 +21,15 @@ impl InMemorySignatureStorage {
     }
 }
 
-impl SignatureStorage for InMemorySignatureStorage {
-    async fn has_signature(&self, epoch: &u64) -> Result<bool, SignatureStorageError> {
+impl SignatureRepository for InMemorySignatureStorage {
+    async fn has_signature(&self, epoch: &u64) -> Result<bool, SignatureRepositoryError> {
         let signatures = self.signatures.read().expect("Poisoned signature storage");
         Ok(signatures.contains_key(epoch))
     }
     async fn get_signature(
         &self,
         epoch: &u64,
-    ) -> Result<Option<EpochSignature>, SignatureStorageError> {
+    ) -> Result<Option<EpochSignature>, SignatureRepositoryError> {
         let result = self
             .signatures
             .read()
@@ -43,7 +43,7 @@ impl SignatureStorage for InMemorySignatureStorage {
         &mut self,
         epoch: &u64,
         signature: EpochSignature,
-    ) -> Result<(), SignatureStorageError> {
+    ) -> Result<(), SignatureRepositoryError> {
         self.signatures
             .write()
             .expect("Poisoned signature storage")

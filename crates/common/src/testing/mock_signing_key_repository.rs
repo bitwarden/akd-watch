@@ -2,7 +2,7 @@ use crate::{
     crypto::{SigningKey, VerifyingKey},
     storage::signing_keys::{
         SigningKeyRepository, SigningKeyRepositoryError, VerifyingKeyRepository,
-        VerifyingKeyRepositoryError,
+        VerifyingKeyRepositoryError, VerifyingKeyStorage,
     },
 };
 use chrono::Duration;
@@ -129,12 +129,12 @@ impl SigningKeyRepository for MockSigningKeyRepository {
 
     fn verifying_key_repository(
         &self,
-    ) -> Result<impl VerifyingKeyRepository, SigningKeyRepositoryError> {
-        Ok(MockVerifyingKeyRepository::new(
+    ) -> Result<VerifyingKeyStorage, SigningKeyRepositoryError> {
+        Ok(VerifyingKeyStorage::Mock(MockVerifyingKeyRepository::new(
             self.current_key.clone(),
             self.expired_keys.clone(),
             self.should_fail.clone(),
-        ))
+        )))
     }
 }
 

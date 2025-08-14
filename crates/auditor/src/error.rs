@@ -27,7 +27,7 @@ pub enum AuditError {
     #[error("Verifying key error: {0}")]
     VerifyingKeyError(#[from] akd_watch_common::storage::signing_keys::VerifyingKeyRepositoryError),
     #[error("{0}")]
-    SignatureStorageError(#[from] akd_watch_common::storage::signatures::SignatureStorageError),
+    SignatureStorageError(#[from] akd_watch_common::storage::signatures::SignatureRepositoryError),
     #[error("{0}")]
     VerifyError(#[from] akd_watch_common::VerifyError),
     #[error("Local Auditor error: {0:?}")]

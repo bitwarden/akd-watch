@@ -1,6 +1,6 @@
 use crate::{
     EpochSignature,
-    storage::signatures::{SignatureStorage, SignatureStorageError},
+    storage::signatures::{SignatureRepository, SignatureRepositoryError},
 };
 use std::{
     collections::HashMap,
@@ -60,11 +60,11 @@ impl MockSignatureStorage {
     }
 }
 
-impl SignatureStorage for MockSignatureStorage {
+impl SignatureRepository for MockSignatureStorage {
     fn has_signature(
         &self,
         epoch: &u64,
-    ) -> impl std::future::Future<Output = Result<bool, SignatureStorageError>> + Send {
+    ) -> impl std::future::Future<Output = Result<bool, SignatureRepositoryError>> + Send {
         let result = if *self.should_fail_get.read().unwrap() {
             // For has_signature, we don't really fail - just return false
             false
@@ -77,7 +77,7 @@ impl SignatureStorage for MockSignatureStorage {
     fn get_signature(
         &self,
         epoch: &u64,
-    ) -> impl std::future::Future<Output = Result<Option<EpochSignature>, SignatureStorageError>> + Send
+    ) -> impl std::future::Future<Output = Result<Option<EpochSignature>, SignatureRepositoryError>> + Send
     {
         let result = if *self.should_fail_get.read().unwrap() {
             None
@@ -91,7 +91,7 @@ impl SignatureStorage for MockSignatureStorage {
         &mut self,
         epoch: &u64,
         signature: EpochSignature,
-    ) -> impl std::future::Future<Output = Result<(), SignatureStorageError>> + Send {
+    ) -> impl std::future::Future<Output = Result<(), SignatureRepositoryError>> + Send {
         if !*self.should_fail_set.read().unwrap() {
             self.signatures.write().unwrap().insert(*epoch, signature);
         }
