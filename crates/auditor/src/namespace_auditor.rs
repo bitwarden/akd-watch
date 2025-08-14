@@ -22,8 +22,7 @@ const MAX_EPOCHS_PER_POLL: usize = 50;
 
 /// Service responsible for auditing a single namespace
 pub struct NamespaceAuditor<NR, SKR, SS> {
-    // TODO: remove namespace_info and store only the name which we'll use to pull fresh infos from the repository
-    namespace_info: NamespaceInfo,
+    namespace_name: String,
     namespace_repository: Arc<RwLock<NR>>,
     signing_key_repository: Arc<RwLock<SKR>>,
     signature_storage: SS,
@@ -46,7 +45,7 @@ where
         shutdown_rx: Receiver<()>,
     ) -> Self {
         Self {
-            namespace_info,
+            namespace_name: namespace_info.name.clone(),
             namespace_repository,
             signing_key_repository,
             signature_storage,
@@ -56,10 +55,8 @@ where
     }
 
     /// Start the auditing loop for this namespace
-    #[instrument(level = "info", skip_all, fields(namespace = self.namespace_info.name))]
+    #[instrument(level = "info", skip_all, fields(namespace = self.namespace_name))]
     pub async fn run(mut self) -> Result<()> {
-        info!(namespace = ?self.namespace_info, "Starting namespace auditor");
-
         // TODO: Check namespace status in repository before starting audit loop
         // If namespace is in failed state from previous runs, we should exit this thread immediately.
 
@@ -70,7 +67,7 @@ where
             }
         }
 
-        info!(namespace = ?self.namespace_info, "Namespace auditor stopped");
+        info!(namespace = ?self.namespace_name, "Namespace auditor stopped");
         Ok(())
     }
 
@@ -82,7 +79,7 @@ where
                 // Always sleep after an audit cycle since poll_for_new_epochs
                 // already gets all available epochs in one call
                 trace!(
-                    namespace = self.namespace_info.name,
+                    namespace = self.namespace_name,
                     sleep_duration = ?self.sleep_duration,
                     processed_count,
                     "Audit cycle complete"
@@ -92,7 +89,7 @@ where
             }
             Err(e) => {
                 warn!(
-                    namespace = self.namespace_info.name,
+                    namespace = self.namespace_name,
                     error = %e,
                     "Critical audit failure - stopping namespace auditor"
                 );
@@ -108,14 +105,14 @@ where
     async fn interruptible_sleep(&mut self, processed_count: &usize) -> bool {
         let sleep_duration = if *processed_count != MAX_EPOCHS_PER_POLL {
             debug!(
-                namespace = self.namespace_info.name,
+                namespace = self.namespace_name,
                 sleep_duration = ?self.sleep_duration,
                 "Sleeping for configured duration after processing epochs"
             );
             self.sleep_duration
         } else {
             debug!(
-                namespace = self.namespace_info.name,
+                namespace = self.namespace_name,
                 "Processed all epochs in this cycle, no sleep needed"
             );
             Duration::from_millis(10) // No sleep if we processed all epochs, but we want to check for shutdown
@@ -124,14 +121,14 @@ where
         match interruptible_sleep(sleep_duration, &mut self.shutdown_rx).await {
             true => {
                 info!(
-                    namespace = self.namespace_info.name,
+                    namespace = self.namespace_name,
                     "Received shutdown signal during sleep"
                 );
                 true // Signal shutdown
             }
             false => {
                 trace!(
-                    namespace = self.namespace_info.name,
+                    namespace = self.namespace_name,
                     "Sleep completed normally"
                 );
                 false // Sleep completed without shutdown
@@ -233,7 +230,7 @@ where
         error: &AuditError,
     ) -> Result<(), AuditError> {
         trace!(
-            namespace = self.namespace_info.name,
+            namespace = self.namespace_name,
             error = %error,
             "Handling audit failure"
         );
@@ -272,12 +269,12 @@ where
     /// Get fresh namespace info from the repository
     async fn get_fresh_namespace_info(&self) -> Result<NamespaceInfo> {
         let repo = self.namespace_repository.read().await;
-        repo.get_namespace_info(&self.namespace_info.name)
+        repo.get_namespace_info(&self.namespace_name)
             .await?
             .ok_or_else(|| {
                 anyhow::anyhow!(
                     "Namespace {} not found in repository",
-                    self.namespace_info.name
+                    self.namespace_name
                 )
             })
     }

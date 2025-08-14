@@ -86,6 +86,11 @@ impl AuditorApp {
             );
 
             let handle = tokio::spawn(async move {
+                info!(
+                    namespace = ?namespace_info,
+                    "Starting auditor for namespace"
+                );
+
                 if let Err(e) = auditor.run().await {
                     warn!(
                         namespace = namespace_info.name,
