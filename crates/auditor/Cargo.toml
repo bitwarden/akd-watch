@@ -22,7 +22,7 @@ akd = {workspace = true}
 akd_core = {workspace = true}
 futures-util = "0.3.31"
 anyhow = "1.0.98"
-ed25519-dalek = "2.2.0"
+ed25519-dalek = {workspace = true}
 rand = "0.9.1"
 
 [dev-dependencies]

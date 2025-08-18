@@ -25,16 +25,16 @@ type = "InMemory"
 # Storage configuration - choose one of the following:
 
 # Option 1: In-memory storage (good for testing)
-[storage]
+[signature_storage]
 type = "InMemory"
 
 # Option 2: File-based storage (stores signatures as JSON files)
-# [storage]
+# [signature_storage]
 # type = "File"
 # directory = "/var/lib/akd-watch/storage"
 
 # Option 3: Azure Blob storage
-# [storage]
+# [signature_storage]
 # type = "Azure"
 # account_name = "your_storage_account"
 # container_name = "your_container"

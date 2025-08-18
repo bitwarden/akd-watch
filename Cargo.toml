@@ -25,6 +25,8 @@ akd = { version = "0.11.0", features = ["whatsapp_v1", "public_auditing"] }
 akd_core = { version = "0.11.0" }
 serde_json = { version = "1.0.142" }
 serde = {version= "1.0.219", features = ["derive"] }
+ed25519-dalek = "2.2.0"
+
 
 [workspace.lints.clippy]
 unused_async = "deny"

@@ -1,5 +1,5 @@
 use akd_watch_common::{
-    Epoch, NamespaceInfo, NamespaceStatus, akd_configurations::AkdConfiguration,
+    akd_configurations::AkdConfiguration, config::{NamespaceStorageConfig, SignatureStorageConfig}, Epoch, NamespaceInfo, NamespaceStatus
 };
 use config::{Config, ConfigError, Environment, File};
 use serde::{Deserialize, Serialize};
@@ -36,7 +36,7 @@ pub struct AuditorConfig {
     pub signing: SigningConfig,
 
     /// Storage configuration
-    pub storage: StorageConfig,
+    pub signature_storage: SignatureStorageConfig,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -64,110 +64,6 @@ pub struct SigningConfig {
     pub key_dir: String,
     #[serde(default = "default_key_lifetime_seconds")]
     pub key_lifetime_seconds: i64,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(tag = "type")]
-pub enum NamespaceStorageConfig {
-    #[serde(rename = "InMemory")]
-    InMemory,
-    #[serde(rename = "File")]
-    File {
-        /// file path where namespace state will be stored
-        state_file: String,
-    },
-}
-
-impl NamespaceStorageConfig {
-    /// Validate that the namespace storage configuration is complete and usable
-    pub fn validate(&self) -> Result<(), ConfigError> {
-        match self {
-            NamespaceStorageConfig::InMemory => Ok(()),
-            NamespaceStorageConfig::File { state_file } => {
-                if state_file.is_empty() {
-                    return Err(ConfigError::Message(
-                        "Namespace storage state_file cannot be empty".to_string(),
-                    ));
-                }
-
-                // Validate the directory exists
-                let parent = std::path::Path::new(state_file).parent().ok_or_else(|| {
-                    ConfigError::Message(
-                        "Namespace storage state_file must have a valid parent directory"
-                            .to_string(),
-                    )
-                })?;
-                if !parent.exists() {
-                    return Err(ConfigError::Message(format!(
-                        "Namespace storage state_file parent directory does not exist: {}",
-                        parent.display()
-                    )));
-                }
-
-                Ok(())
-            }
-        }
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(tag = "type")]
-pub enum StorageConfig {
-    #[serde(rename = "InMemory")]
-    InMemory,
-
-    #[serde(rename = "File")]
-    File {
-        /// Directory path where files will be stored
-        directory: String,
-    },
-
-    #[serde(rename = "Azure")]
-    Azure {
-        /// Azure storage account name
-        account_name: String,
-        /// Azure container name
-        container_name: String,
-        /// Azure connection string (required)
-        connection_string: Option<String>,
-    },
-}
-
-impl StorageConfig {
-    /// Validate that the storage configuration is complete and usable
-    pub fn validate(&self) -> Result<(), ConfigError> {
-        match self {
-            StorageConfig::InMemory => Ok(()),
-            StorageConfig::File { directory } => {
-                if directory.is_empty() {
-                    return Err(ConfigError::Message(
-                        "File storage directory cannot be empty".to_string(),
-                    ));
-                }
-
-                // Check if directory exists
-                if !std::path::Path::new(directory).exists() {
-                    return Err(ConfigError::Message(format!(
-                        "File storage directory does not exist: {}",
-                        directory
-                    )));
-                }
-
-                Ok(())
-            }
-            StorageConfig::Azure {
-                connection_string, ..
-            } => {
-                if connection_string.is_none() {
-                    Err(ConfigError::Message(
-                        "Azure storage requires connection_string in config".to_string(),
-                    ))
-                } else {
-                    Ok(())
-                }
-            }
-        }
-    }
 }
 
 impl AuditorConfig {
@@ -208,7 +104,7 @@ impl AuditorConfig {
     pub fn validate(&self) -> Result<(), ConfigError> {
         // Validate storage configuration
         self.namespace_storage.validate()?;
-        self.storage.validate()?;
+        self.signature_storage.validate()?;
 
         // TODO: Add validation for other configuration sections as needed
         // - signing key file existence
@@ -558,58 +454,6 @@ mod tests {
         assert!(
             !changed,
             "Disabled -> Disabled should not be detected as change"
-        );
-    }
-
-    #[test]
-    fn test_storage_config_validation() {
-        // Test InMemory - should always be valid
-        let inmemory = StorageConfig::InMemory;
-        assert!(inmemory.validate().is_ok());
-
-        // Test File with valid directory that exists
-        let file_valid = StorageConfig::File {
-            directory: "/tmp".to_string(), // /tmp should exist on most systems
-        };
-        assert!(file_valid.validate().is_ok());
-
-        // Test File with empty directory
-        let file_empty = StorageConfig::File {
-            directory: "".to_string(),
-        };
-        let result = file_empty.validate();
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("cannot be empty"));
-
-        // Test File with non-existent directory
-        let file_nonexistent = StorageConfig::File {
-            directory: "/this/directory/should/not/exist/hopefully/12345".to_string(),
-        };
-        let result = file_nonexistent.validate();
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("does not exist"));
-
-        // Test Azure with connection string in config
-        let azure_with_conn = StorageConfig::Azure {
-            account_name: "test".to_string(),
-            container_name: "test".to_string(),
-            connection_string: Some("DefaultEndpointsProtocol=https;AccountName=test;".to_string()),
-        };
-        assert!(azure_with_conn.validate().is_ok());
-
-        // Test Azure without connection string (should fail)
-        let azure_no_conn = StorageConfig::Azure {
-            account_name: "test".to_string(),
-            container_name: "test".to_string(),
-            connection_string: None,
-        };
-        let result = azure_no_conn.validate();
-        assert!(result.is_err());
-        assert!(
-            result
-                .unwrap_err()
-                .to_string()
-                .contains("requires connection_string")
         );
     }
 }

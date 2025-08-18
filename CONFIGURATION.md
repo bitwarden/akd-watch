@@ -14,7 +14,7 @@ See `config.example.toml` for a complete example configuration file.
 - `sleep_seconds` (optional): Time to wait between audit cycles in seconds (defaults to 30)
 - `namespaces`: Array of namespace configurations to audit
 - `signing`: Signing key configuration
-- `storage`: Storage backend configuration
+- `signature_storage`: Storage backend configuration
 - `namespace_storage`: Namespace state storage configuration
 
 ### Namespace State Storage Configuration
@@ -42,13 +42,13 @@ The storage backend is configured using the `storage` section, which specifies h
 
 **In-Memory Storage:**
 ```toml
-[storage]
+[signature_storage]
 type = "InMemory"
 ```
 
 **File-based Storage:**
 ```toml
-[storage]
+[signature_storage]
 type = "File" 
 directory = "/var/lib/akd-watch/storage"
 ```
@@ -66,14 +66,14 @@ When using file-based storage:
 
 **Azure Blob Storage:**
 ```toml
-[storage]
+[signature_storage]
 type = "Azure"
 account_name = "your_storage_account"
 container_name = "your_container"
 connection_string = "your_connection_string"  # Optional in config file
 ```
 
-**Note:** Azure storage requires a connection string either in the config file or via the `AZURE_STORAGE_CONNECTION_STRING` environment variable. The configuration will be validated at startup to ensure the connection string is available from one of these sources.
+**Note:** Azure storage requires a connection string either in the config file or via the `SIGNATURE_STORAGE_CONNECTION_STRING` environment variable. The configuration will be validated at startup to ensure the connection string is available from one of these sources.
 
 ### Signing Configuration
 

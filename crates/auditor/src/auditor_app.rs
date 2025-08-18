@@ -3,17 +3,17 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::RwLock;
 
-use akd_watch_common::storage::{
+use akd_watch_common::{config::{NamespaceStorageConfig, SignatureStorageConfig}, storage::{
     namespaces::{FileNamespaceRepository, InMemoryNamespaceRepository, NamespaceRepository, NamespaceStorage},
     signatures::{FilesystemSignatureStorage, InMemorySignatureStorage, SignatureStorage},
     signing_keys::{FileSigningKeyRepository, SigningKeyStorage},
-};
+}};
 use anyhow::{Context, Result};
 use futures_util::future;
 use tokio::sync::broadcast;
 use tracing::{info, warn};
 
-use crate::config::{AuditorConfig, NamespaceStorageConfig, StorageConfig};
+use crate::config::{AuditorConfig};
 use crate::namespace_auditor::NamespaceAuditor;
 
 /// Main auditor application
@@ -191,8 +191,8 @@ impl AuditorApp {
     ) -> Result<HashMap<String, SignatureStorage>> {
         let mut storage_map = HashMap::new();
 
-        match &config.storage {
-            StorageConfig::File { directory } => {
+        match &config.signature_storage {
+            SignatureStorageConfig::File { directory } => {
                 for ns_config in &config.namespaces {
                     let ns_directory = format!("{}/{}", directory.clone(), ns_config.name.clone());
                     storage_map.insert(
@@ -201,7 +201,7 @@ impl AuditorApp {
                     );
                 }
             }
-            StorageConfig::InMemory => {
+            SignatureStorageConfig::InMemory => {
                 for ns_config in &config.namespaces {
                     storage_map.insert(
                         ns_config.name.clone(),
@@ -209,7 +209,7 @@ impl AuditorApp {
                     );
                 }
             }
-            StorageConfig::Azure { .. } => {
+            SignatureStorageConfig::Azure { .. } => {
                 return Err(anyhow::anyhow!(
                     "Azure storage not yet implemented for signature storage"
                 ));

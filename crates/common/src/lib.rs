@@ -8,6 +8,7 @@ mod namespace_info;
 pub mod storage;
 mod versions;
 pub(crate) mod proto;
+pub mod config;
 
 pub use akd_configurations::BitwardenV1Configuration;
 pub use audit_blob_name::SerializableAuditBlobName;

@@ -107,6 +107,7 @@ dependencies = [
  "akd",
  "bincode",
  "chrono",
+ "config",
  "ed25519-dalek",
  "hex",
  "mockito",

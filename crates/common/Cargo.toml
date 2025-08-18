@@ -21,6 +21,7 @@ tracing-subscriber = { workspace = true }
 thiserror = { workspace = true }
 akd = { workspace = true }
 chrono = { workspace = true }
+config = { workspace = true }
 hex = "0.4.3"
 ed25519-dalek = { version = "2.2.0", features = ["serde"] }
 uuid = { version = "1.17.0", features = ["v4", "serde"] }
