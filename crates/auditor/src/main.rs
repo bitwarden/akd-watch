@@ -1,49 +1,29 @@
-use anyhow::Result;
-use tracing::{error, info, trace};
+use akd_watch_auditor::start;
+use tracing::{error, info};
 use tracing_subscriber;
 
-mod auditor_app;
-mod config;
-mod error;
-mod namespace_auditor;
-
-use auditor_app::AuditorApp;
-use config::AuditorConfig;
-
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() {
     tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::INFO)
-        .init();
+    .with_max_level(tracing::Level::INFO)
+    .init();
 
-    trace!("Starting auditor application");
+    let (shutdown_tx, mut shutdown_rx) = tokio::sync::broadcast::channel(1);
 
-    let config = AuditorConfig::load()
-        .map_err(|e| anyhow::anyhow!("Failed to load configuration: {}", e))?;
+    let handle = start(&mut shutdown_rx);
 
-    info!(
-        "Starting auditor with {} namespaces",
-        config.namespaces.len()
-    );
-
-    let app = AuditorApp::from_config(config).await?;
-
-    // Handle graceful shutdown with signal handling at the application level
     tokio::select! {
         _ = tokio::signal::ctrl_c() => {
-            info!("Received Ctrl+C, initiating graceful shutdown");
-            if let Err(e) = app.shutdown() {
-                error!(error = %e, "Error during shutdown");
-            }
-            info!("Shutdown signal sent, waiting for auditors to complete...");
+            info!("Received Ctrl+C, shutting down");
+            shutdown_tx.send(()).ok();
         }
-        result = app.run() => {
-            match result {
-                Ok(()) => info!("All auditors completed"),
-                Err(e) => error!(error = %e, "Application error"),
+        result = handle => {
+            if let Err(e) = result {
+                error!(error = %e, "Application error");
+                std::process::exit(1);
             }
         }
     }
-
-    Ok(())
 }
+
+

@@ -1,0 +1,16 @@
+[package]
+name = "akd_watch_aio"
+
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+keywords.workspace = true
+
+[dependencies]
+akd_watch_web = {workspace = true}
+akd_watch_auditor = {workspace = true}
+anyhow = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

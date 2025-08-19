@@ -79,6 +79,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "akd_watch_aio"
+version = "0.1.0"
+dependencies = [
+ "akd_watch_auditor",
+ "akd_watch_web",
+ "anyhow",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "akd_watch_auditor"
 version = "0.1.0"
 dependencies = [
@@ -131,6 +143,7 @@ version = "0.1.0"
 dependencies = [
  "akd",
  "akd_watch_common",
+ "anyhow",
  "axum",
  "azure_storage",
  "azure_storage_blobs",

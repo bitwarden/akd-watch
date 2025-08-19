@@ -9,6 +9,7 @@ keywords.workspace = true
 
 [dependencies]
 akd = {workspace = true}
+anyhow = { workspace = true }
 axum = {version = "0.7", features = ["macros"] }
 config = { workspace = true }
 hex = { workspace = true}

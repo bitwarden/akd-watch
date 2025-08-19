@@ -9,7 +9,7 @@ use akd_watch_common::storage::{
     signing_keys::SigningKeyStorage,
 };
 use anyhow::{Context, Result};
-use futures_util::future;
+use futures_util::future::{self, JoinAll};
 use tokio::sync::broadcast;
 use tracing::{info, warn};
 
@@ -23,6 +23,7 @@ pub struct AuditorApp {
     signature_storage_map: HashMap<String, SignatureStorage>,
     sleep_duration: Duration,
     shutdown_tx: broadcast::Sender<()>,
+    complete_handle: Option<JoinAll<tokio::task::JoinHandle<()>>>,
 }
 
 impl AuditorApp {
@@ -57,11 +58,12 @@ impl AuditorApp {
             signature_storage_map,
             sleep_duration: config.sleep_duration(),
             shutdown_tx,
+            complete_handle: None,
         })
     }
 
     /// Run the auditor application
-    pub async fn run(&self) -> Result<()> {
+    pub async fn run(&mut self) -> Result<()> {
         // Get all namespaces from the repository
         let namespace_infos = self
             .namespace_repository
@@ -115,23 +117,37 @@ impl AuditorApp {
         info!("Started {} namespace auditors", handles.len());
 
         // Wait for all auditors to complete
-        let results = future::join_all(handles).await;
-        for result in results {
-            if let Err(e) = result {
-                warn!(error = %e, "Auditor task completed with error");
-            }
-        }
+        self.complete_handle = Some(future::join_all(handles));
+        self.wait_for_complete().await;
 
         info!("All auditors completed");
         Ok(())
     }
 
+    async fn wait_for_complete(&mut self) {
+        if let Some(handle) = self.complete_handle.take() {
+            info!("Waiting for auditors to complete");
+            let results = handle.await;
+            for result in results {
+                if let Err(e) = result {
+                    warn!(error = %e, "Auditor task completed with error during shutdown");
+                }
+            }
+            info!("All auditors completed during shutdown");
+        } else {
+            info!("No auditors were running during shutdown");
+        }
+    }
+
     /// Gracefully shutdown all auditors
-    pub fn shutdown(&self) -> Result<()> {
+    pub async fn shutdown(&mut self) -> Result<()> {
         info!("Initiating graceful shutdown");
         self.shutdown_tx
             .send(())
             .map_err(|_| anyhow::anyhow!("Failed to send shutdown signal - no receivers"))?;
+
+        self.wait_for_complete().await;
+
         Ok(())
     }
 
