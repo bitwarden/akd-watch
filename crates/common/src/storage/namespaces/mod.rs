@@ -1,16 +1,14 @@
-mod in_memory_namespace_repository;
 mod file_namespace_repository;
+mod in_memory_namespace_repository;
 
-pub use in_memory_namespace_repository::InMemoryNamespaceRepository;
 pub use file_namespace_repository::FileNamespaceRepository;
+pub use in_memory_namespace_repository::InMemoryNamespaceRepository;
 
-use thiserror::Error;
 use std::future::Future;
+use thiserror::Error;
 
 use crate::NamespaceInfo;
-use std::{
-    fmt::Debug,
-};
+use std::fmt::Debug;
 
 #[derive(Debug, Error)]
 pub enum NamespaceRepositoryError {
@@ -42,7 +40,7 @@ pub trait NamespaceRepository: Clone + Send + Sync {
 }
 
 /// Enum wrapper to support different namespace repository implementations
-/// 
+///
 /// This enum allows applications to work with different storage backends
 /// for namespace information (File-based or InMemory) based on configuration.
 #[derive(Clone, Debug)]
@@ -52,10 +50,7 @@ pub enum NamespaceStorage {
 }
 
 impl NamespaceRepository for NamespaceStorage {
-    async fn get_namespace_info(
-        &self,
-        name: &str,
-    ) -> Result<Option<crate::NamespaceInfo>> {
+    async fn get_namespace_info(&self, name: &str) -> Result<Option<crate::NamespaceInfo>> {
         match self {
             NamespaceStorage::File(repo) => repo.get_namespace_info(name).await,
             NamespaceStorage::InMemory(repo) => repo.get_namespace_info(name).await,

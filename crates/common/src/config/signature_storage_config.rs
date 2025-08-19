@@ -1,5 +1,12 @@
+use std::collections::HashMap;
+
 use config::ConfigError;
 use serde::{Deserialize, Serialize};
+
+use crate::storage::{
+    namespaces::{NamespaceRepository, NamespaceStorage},
+    signatures::{FilesystemSignatureStorage, InMemorySignatureStorage, SignatureStorage},
+};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(tag = "type")]
@@ -58,6 +65,43 @@ impl SignatureStorageConfig {
                 }
             }
         }
+    }
+
+    pub async fn build_signature_storage(
+        &self,
+        namespace_storage: &NamespaceStorage,
+    ) -> Result<HashMap<String, SignatureStorage>, ConfigError> {
+        let mut storage_map = HashMap::new();
+
+        let namespaces = namespace_storage
+            .list_namespaces()
+            .await
+            .map_err(|e| ConfigError::Message(format!("Failed to list namespaces: {}", e)))?;
+
+        match self {
+            SignatureStorageConfig::File { directory } => {
+                for ns_config in namespaces {
+                    let ns_directory = format!("{}/{}", directory.clone(), ns_config.name.clone());
+                    storage_map.insert(
+                        ns_config.name.clone(),
+                        SignatureStorage::Filesystem(FilesystemSignatureStorage::new(ns_directory)),
+                    );
+                }
+            }
+            SignatureStorageConfig::InMemory => {
+                for ns_config in namespaces {
+                    storage_map.insert(
+                        ns_config.name.clone(),
+                        SignatureStorage::InMemory(InMemorySignatureStorage::new()),
+                    );
+                }
+            }
+            SignatureStorageConfig::Azure { .. } => {
+                todo!("Azure storage not yet implemented for signature storage");
+            }
+        }
+
+        Ok(storage_map)
     }
 }
 

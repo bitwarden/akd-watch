@@ -1,20 +1,20 @@
 pub mod akd_configurations;
 pub mod akd_storage_factory;
 mod audit_blob_name;
+pub mod config;
 pub mod crypto;
 mod epoch_signature;
 mod error;
 mod namespace_info;
+pub(crate) mod proto;
 pub mod storage;
 mod versions;
-pub(crate) mod proto;
-pub mod config;
 
 pub use akd_configurations::BitwardenV1Configuration;
 pub use audit_blob_name::SerializableAuditBlobName;
 use chrono::Duration;
-pub use epoch_signature::{EpochSignature, SignError, VerifyError}; 
 pub(crate) use epoch_signature::EpochSignedMessage;
+pub use epoch_signature::{EpochSignature, SignError, VerifyError};
 pub use namespace_info::*;
 use tokio::time::Instant;
 pub use versions::*;
@@ -26,10 +26,14 @@ pub use akd_configurations::TestAkdConfiguration;
 #[cfg(any(test, feature = "testing"))]
 pub mod testing;
 
-pub const BINCODE_CONFIG: bincode::config::Configuration<bincode::config::LittleEndian, bincode::config::Varint, bincode::config::NoLimit> = bincode::config::standard()
-        .with_little_endian()
-        .with_variable_int_encoding()
-        .with_no_limit();
+pub const BINCODE_CONFIG: bincode::config::Configuration<
+    bincode::config::LittleEndian,
+    bincode::config::Varint,
+    bincode::config::NoLimit,
+> = bincode::config::standard()
+    .with_little_endian()
+    .with_variable_int_encoding()
+    .with_no_limit();
 
 pub async fn tic_toc<T>(f: impl core::future::Future<Output = T>) -> T {
     {
@@ -297,8 +301,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_timed_event_with_complex_future_and_fields() {
-        let result = timed_event!(DEBUG, complex_async_function(100); 
-                                  operation = "database_query", query_id = 123)
+        let result = timed_event!(DEBUG, complex_async_function(100); operation = "database_query", query_id = 123)
         .await;
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "Value: 100");
@@ -306,8 +309,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_timed_event_with_fields_and_message() {
-        let result = timed_event!(INFO, async { "success" }; 
-                                  operation = "test", user_id = 456, "Operation completed successfully").await;
+        let result = timed_event!(INFO, async { "success" }; operation = "test", user_id = 456, "Operation completed successfully").await;
         assert_eq!(result, "success");
     }
 

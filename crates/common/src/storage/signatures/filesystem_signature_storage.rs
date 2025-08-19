@@ -1,6 +1,11 @@
+use tracing::{instrument, trace};
+
 use crate::{
+    BINCODE_CONFIG,
     epoch_signature::EpochSignature,
-    storage::signatures::{SignatureRepository, SignatureRepositoryError, SignatureStorageFileError}, BINCODE_CONFIG,
+    storage::signatures::{
+        SignatureRepository, SignatureRepositoryError, SignatureStorageFileError,
+    },
 };
 
 #[derive(Clone, Debug)]
@@ -23,9 +28,17 @@ impl FilesystemSignatureStorage {
         format!("{}/{}/{}", self.root_path, epoch, SIG_FILE_NAME)
     }
 
+    #[instrument(skip_all, fields(epoch))]
     pub fn get_existing_signature_path(&self, epoch: &u64) -> Option<String> {
         let sig_file_path = self.epoch_sig_path(epoch);
         let path = std::path::Path::new(&sig_file_path);
+        trace!(
+            epoch,
+            sig_file_path,
+            path_exists = path.exists(),
+            path_is_file = path.is_file(),
+            "expected signature file path"
+        );
         match path.exists() && path.is_file() {
             true => Some(path.to_string_lossy().to_string()),
             false => None,
@@ -47,14 +60,27 @@ impl SignatureRepository for FilesystemSignatureStorage {
         epoch: &u64,
     ) -> Result<Option<EpochSignature>, SignatureRepositoryError> {
         let signature_path = self.get_existing_signature_path(epoch);
+        trace!(
+            epoch,
+            signature_path, "Checking for existing signature file"
+        );
+
         if let Some(path) = signature_path {
+            trace!(epoch, path, "Found signature file, reading it");
             // Read the signature file to bytes
-            let bytes = std::fs::read(&path)
-                .map_err(|e| SignatureStorageFileError::IoError(e))?;
+            let bytes = std::fs::read(&path).map_err(|e| SignatureStorageFileError::IoError(e))?;
+            trace!(
+                epoch,
+                path,
+                "Read {} bytes from signature file",
+                bytes.len()
+            );
 
             let signature: EpochSignature = bincode::decode_from_slice(&bytes, BINCODE_CONFIG)?.0;
+            trace!(epoch, path, "Decoded signature from file");
             Ok(Some(signature))
         } else {
+            trace!(epoch, "No signature file found for epoch");
             Ok(None)
         }
     }
@@ -72,11 +98,8 @@ impl SignatureRepository for FilesystemSignatureStorage {
         // Write the signature to a file in the epoch directory
         let signature_path = self.epoch_sig_path(epoch);
         let content = bincode::encode_to_vec(signature, BINCODE_CONFIG)?;
-        std::fs::write(
-            &signature_path,
-            content,
-        )
-        .map_err(|e| SignatureStorageFileError::IoError(e))?;
+        std::fs::write(&signature_path, content)
+            .map_err(|e| SignatureStorageFileError::IoError(e))?;
 
         Ok(())
     }

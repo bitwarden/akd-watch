@@ -51,7 +51,10 @@ impl FileNamespaceRepository {
         Ok(namespaces)
     }
 
-    fn persist(&self, locked_namespaces: &HashMap<String, NamespaceInfo>) -> Result<(), NamespaceRepositoryPersistenceError> {
+    fn persist(
+        &self,
+        locked_namespaces: &HashMap<String, NamespaceInfo>,
+    ) -> Result<(), NamespaceRepositoryPersistenceError> {
         trace!("Persisting namespaces to file: {}", self.file_path);
         let serialized = serde_json::to_string(&*locked_namespaces).map_err(|e| {
             NamespaceRepositoryPersistenceError(format!("Failed to serialize namespaces: {}", e))
@@ -60,7 +63,10 @@ impl FileNamespaceRepository {
         std::fs::write(&self.file_path, serialized).map_err(|e| {
             NamespaceRepositoryPersistenceError(format!("Failed to write to file: {}", e))
         })?;
-        debug!("Successfully persisted {} namespaces", locked_namespaces.len());
+        debug!(
+            "Successfully persisted {} namespaces",
+            locked_namespaces.len()
+        );
         Ok(())
     }
 }

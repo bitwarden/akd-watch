@@ -1,12 +1,14 @@
 use akd_watch_common::{
-    akd_configurations::AkdConfiguration, config::{NamespaceStorageConfig, SignatureStorageConfig}, Epoch, NamespaceInfo, NamespaceStatus
+    Epoch, NamespaceInfo, NamespaceStatus,
+    akd_configurations::AkdConfiguration,
+    config::{NamespaceStorageConfig, SignatureStorageConfig, SigningConfig},
 };
 use config::{Config, ConfigError, Environment, File};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
-const DEFAULT_SLEEP_SECONDS: u64 = 30; // Default to 30 seconds
-const DEFAULT_KEY_LIFETIME_SECONDS: i64 = 60 * 60 * 24 * 30; // Default to 30 days
+/// Default constant for sleep duration between audit cycles.= 30 seconds
+const DEFAULT_SLEEP_SECONDS: u64 = 30;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum AkdConfigurationType {
@@ -23,6 +25,7 @@ pub enum ConfigNamespaceStatus {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AuditorConfig {
     /// How long to sleep between audit cycles
+    /// Defaults given by [`DEFAULT_SLEEP_SECONDS`]
     #[serde(default = "default_sleep_seconds")]
     pub sleep_seconds: u64,
 
@@ -58,24 +61,16 @@ pub struct NamespaceConfig {
     pub status: ConfigNamespaceStatus,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct SigningConfig {
-    /// Path to the signing key file
-    pub key_dir: String,
-    #[serde(default = "default_key_lifetime_seconds")]
-    pub key_lifetime_seconds: i64,
-}
-
 impl AuditorConfig {
     /// Load configuration from multiple sources in order of priority:
     /// 1. Configuration file (config.toml, config.yaml, config.json)
-    /// 2. Environment variables (prefixed with AUDITOR_)
+    /// 2. Environment variables (prefixed with AKD_WATCH_)
     pub fn load() -> Result<Self, ConfigError> {
         let config = Config::builder()
             // Start with default config file
             .add_source(File::with_name("config").required(false))
-            // Add environment variables with prefix "AUDITOR_"
-            .add_source(Environment::with_prefix("AUDITOR").separator("_"))
+            // Add environment variables with prefix "AKD_WATCH_"
+            .add_source(Environment::with_prefix("AKD_WATCH").separator("_"))
             .build()?;
 
         let auditor_config: Self = config.try_deserialize()?;
@@ -90,7 +85,7 @@ impl AuditorConfig {
     pub fn load_from_file(path: &str) -> Result<Self, ConfigError> {
         let config = Config::builder()
             .add_source(File::with_name(path))
-            .add_source(Environment::with_prefix("AUDITOR").separator("_"))
+            .add_source(Environment::with_prefix("AKD_WATCH").separator("_"))
             .build()?;
 
         let auditor_config: Self = config.try_deserialize()?;
@@ -105,6 +100,7 @@ impl AuditorConfig {
         // Validate storage configuration
         self.namespace_storage.validate()?;
         self.signature_storage.validate()?;
+        self.signing.validate()?;
 
         // TODO: Add validation for other configuration sections as needed
         // - signing key file existence
@@ -215,10 +211,6 @@ impl NamespaceConfig {
 // Default values for serde defaults
 fn default_sleep_seconds() -> u64 {
     DEFAULT_SLEEP_SECONDS
-}
-
-fn default_key_lifetime_seconds() -> i64 {
-    DEFAULT_KEY_LIFETIME_SECONDS
 }
 
 #[cfg(test)]

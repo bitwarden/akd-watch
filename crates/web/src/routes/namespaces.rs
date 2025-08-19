@@ -1,26 +1,38 @@
-use akd_watch_common::{
-    Epoch, NamespaceInfo, NamespaceStatus, akd_configurations::AkdConfiguration,
-};
+use akd_watch_common::{NamespaceInfo, storage::namespaces::NamespaceRepository};
 use axum::Json;
+use tracing::{info, instrument};
 
-pub async fn handle_query_namespace(
+use crate::{error::ApiError, routes::AppState};
+
+#[instrument(skip_all, fields(namespace))]
+pub async fn namespace_query_handler(
+    axum::extract::State(AppState {
+        namespace_storage, ..
+    }): axum::extract::State<AppState>,
     axum::extract::Path(namespace): axum::extract::Path<String>,
-) -> Json<Option<NamespaceInfo>> {
-    // TODO: Placeholder Return list of blobs in the namespace
-    Json(
-        NamespaceInfo {
-            configuration: AkdConfiguration::BitwardenV1Configuration,
-            name: namespace.clone(),
-            log_directory: format!("Namespace: {}", namespace),
-            last_verified_epoch: Some(Epoch::new(42)),
-            starting_epoch: Epoch::new(1),
-            status: NamespaceStatus::Online,
+) -> Result<Json<Option<NamespaceInfo>>, ApiError> {
+    info!("Handling namespace query for namespace: {}", namespace);
+    match namespace_storage.get_namespace_info(&namespace).await {
+        Ok(info) => Ok(Json(info)),
+        Err(e) => {
+            tracing::error!("Failed to get namespace info: {}", e);
+            Err(ApiError::Internal)
         }
-        .into(),
-    )
+    }
 }
 
-pub async fn handle_list_namespaces() -> Json<Vec<String>> {
-    // TODO: Placeholder Return list of namespaces
-    Json(vec!["namespace1".to_string(), "namespace2".to_string()])
+#[instrument(skip_all)]
+pub async fn list_namespaces_handler(
+    axum::extract::State(AppState {
+        namespace_storage, ..
+    }): axum::extract::State<AppState>,
+) -> Result<Json<Vec<NamespaceInfo>>, ApiError> {
+    info!("Listing all namespaces");
+    match namespace_storage.list_namespaces().await {
+        Ok(namespaces) => Ok(Json(namespaces)),
+        Err(e) => {
+            tracing::error!("Failed to list namespaces: {}", e);
+            Err(ApiError::Internal)
+        }
+    }
 }

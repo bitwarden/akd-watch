@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{fmt::Display, str::FromStr};
 
 use bincode::{BorrowDecode, Decode, Encode};
 use serde::{Deserialize, Serialize};
@@ -131,6 +131,14 @@ impl From<u64> for Epoch {
     }
 }
 
+impl FromStr for Epoch {
+    type Err = std::num::ParseIntError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        s.parse::<u64>().map(Epoch)
+    }
+}
+
 impl From<Epoch> for u64 {
     fn from(epoch: Epoch) -> Self {
         epoch.0
@@ -147,9 +155,7 @@ impl TryFrom<String> for Epoch {
     type Error = std::num::ParseIntError;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        value
-            .parse::<u64>()
-            .map(Epoch)
+        value.parse::<u64>().map(Epoch)
     }
 }
 
@@ -165,7 +171,7 @@ mod tests {
 
         assert_eq!(bincode(Ciphersuite::ProtobufEd25519), vec![1]);
         assert_eq!(bincode(Ciphersuite::BincodeEd25519), vec![2]);
-        assert_eq!(bincode(Ciphersuite::BincodeSpacingTest), vec![251,0,240]);
+        assert_eq!(bincode(Ciphersuite::BincodeSpacingTest), vec![251, 0, 240]);
     }
 
     #[test]
@@ -178,7 +184,6 @@ mod tests {
 
         assert_eq!(decode(&[1]), Ciphersuite::ProtobufEd25519);
         assert_eq!(decode(&[2]), Ciphersuite::BincodeEd25519);
-        assert_eq!(decode(&[251,0,240]), Ciphersuite::BincodeSpacingTest);
+        assert_eq!(decode(&[251, 0, 240]), Ciphersuite::BincodeSpacingTest);
     }
-
 }

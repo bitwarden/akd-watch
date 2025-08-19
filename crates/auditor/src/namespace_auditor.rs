@@ -124,10 +124,7 @@ where
                 true // Signal shutdown
             }
             false => {
-                trace!(
-                    namespace = self.namespace_name,
-                    "Sleep completed normally"
-                );
+                trace!(namespace = self.namespace_name, "Sleep completed normally");
                 false // Sleep completed without shutdown
             }
         }
@@ -269,10 +266,7 @@ where
         repo.get_namespace_info(&self.namespace_name)
             .await?
             .ok_or_else(|| {
-                anyhow::anyhow!(
-                    "Namespace {} not found in repository",
-                    self.namespace_name
-                )
+                anyhow::anyhow!("Namespace {} not found in repository", self.namespace_name)
             })
     }
 

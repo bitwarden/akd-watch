@@ -21,16 +21,24 @@ pub enum EpochSignature {
     V1(EpochSignatureV1),
 }
 
+impl EpochSignature {
+    pub fn version_int(&self) -> u32 {
+        match self {
+            EpochSignature::V1(_) => 0x00_01,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, Encode, Decode)]
-pub(crate) struct EpochSignatureV1 {
-    pub(crate) ciphersuite: Ciphersuite,
-    pub(crate) namespace: String,
-    pub(crate) timestamp: i64,
-    pub(crate) epoch: Epoch,
-    pub(crate) digest: Vec<u8>,
-    pub(crate) signature: Vec<u8>,
+pub struct EpochSignatureV1 {
+    pub ciphersuite: Ciphersuite,
+    pub namespace: String,
+    pub timestamp: i64,
+    pub epoch: Epoch,
+    pub digest: Vec<u8>,
+    pub signature: Vec<u8>,
     #[bincode(with_serde)]
-    pub(crate) key_id: Uuid,
+    pub key_id: Uuid,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -103,9 +111,7 @@ impl EpochSignedMessage {
             Ciphersuite::ProtobufEd25519 => {
                 Ok(crate::proto::types::SignatureMessage::from(self).encode_to_vec())
             }
-            Ciphersuite::BincodeEd25519 => {
-                Ok(bincode::encode_to_vec(self, crate::BINCODE_CONFIG)?)
-            }
+            Ciphersuite::BincodeEd25519 => Ok(bincode::encode_to_vec(self, crate::BINCODE_CONFIG)?),
             _ => Err(SerializationError::UnknownFormat(format!(
                 "{:?}",
                 self.ciphersuite

@@ -1,4 +1,7 @@
-use crate::{storage::namespaces::{NamespaceRepository, NamespaceRepositoryError}, NamespaceInfo};
+use crate::{
+    NamespaceInfo,
+    storage::namespaces::{NamespaceRepository, NamespaceRepositoryError},
+};
 use std::{
     collections::HashMap,
     fmt::Debug,
@@ -69,7 +72,9 @@ impl NamespaceRepository for InMemoryNamespaceRepository {
             if namespaces.remove(name).is_some() {
                 Ok(())
             } else {
-                Err(NamespaceRepositoryError::NamespaceNotFound(name.to_string()))
+                Err(NamespaceRepositoryError::NamespaceNotFound(
+                    name.to_string(),
+                ))
             }
         }
     }

@@ -1,19 +1,21 @@
 use axum::{Router, routing::get};
 
+use crate::AppState;
+
 mod audits;
 mod info;
 mod namespaces;
 
-pub fn api_routes() -> Router {
+pub fn api_routes() -> Router<AppState> {
     Router::new()
-        .route("/info", get(info::handle_info))
-        .route("/namespaces", get(namespaces::handle_list_namespaces))
+        .route("/info", get(info::info_handler))
+        .route("/namespaces", get(namespaces::list_namespaces_handler))
         .route(
             "/namespaces/:namespace",
-            get(namespaces::handle_query_namespace),
+            get(namespaces::namespace_query_handler),
         )
         .route(
             "/namespaces/:namespace/audits/:epoch",
-            get(audits::handle_audit_query),
+            get(audits::audit_query_handler),
         )
 }

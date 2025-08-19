@@ -8,7 +8,9 @@ pub struct ConversionError;
 
 impl From<&crate::Epoch> for crate::proto::types::Epoch {
     fn from(input: &crate::Epoch) -> Self {
-        Self { inner: input.value().clone() }
+        Self {
+            inner: input.value().clone(),
+        }
     }
 }
 

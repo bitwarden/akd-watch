@@ -92,9 +92,7 @@ impl SigningKeyRepository for InMemorySigningKeyRepository {
         Ok(())
     }
 
-    fn verifying_key_repository(
-        &self,
-    ) -> Result<VerifyingKeyStorage, SigningKeyRepositoryError> {
+    fn verifying_key_repository(&self) -> Result<VerifyingKeyStorage, SigningKeyRepositoryError> {
         let mut verifying_keys = Vec::new();
 
         let key_state = self.keys.lock().unwrap();
@@ -111,7 +109,9 @@ impl SigningKeyRepository for InMemorySigningKeyRepository {
             }
         }
 
-        Ok(VerifyingKeyStorage::InMemory(InMemoryVerifyingKeyRepository::new(verifying_keys)))
+        Ok(VerifyingKeyStorage::InMemory(
+            InMemoryVerifyingKeyRepository::new(verifying_keys),
+        ))
     }
 }
 
@@ -139,6 +139,11 @@ impl VerifyingKeyRepository for InMemoryVerifyingKeyRepository {
     ) -> Result<Option<VerifyingKey>, VerifyingKeyRepositoryError> {
         let keys = self.verifying_keys.lock().unwrap();
         Ok(keys.get(&key_id).cloned())
+    }
+
+    async fn list_keys(&self) -> Result<Vec<VerifyingKey>, VerifyingKeyRepositoryError> {
+        let keys = self.verifying_keys.lock().unwrap();
+        Ok(keys.values().cloned().collect())
     }
 }
 

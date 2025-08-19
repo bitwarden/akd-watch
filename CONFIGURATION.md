@@ -3,16 +3,17 @@
 The auditor uses a layered configuration system that supports multiple sources in order of increasing priority:
 
 1. **Configuration file**: `config.toml`, `config.yaml`, or `config.json`
-2. **Environment variables** (with prefix `AUDITOR_`): e.g., `AUDITOR_SLEEP_SECONDS=30`
+2. **Environment variables** (with prefix `AKD_WATCH_`): e.g., `AKD_WATCH_SLEEP_SECONDS=30`
 
 ## Configuration File
 
 See `config.example.toml` for a complete example configuration file.
 
-### Key Configuration Options
+### Root Configuration Options
 
-- `sleep_seconds` (optional): Time to wait between audit cycles in seconds (defaults to 30)
-- `namespaces`: Array of namespace configurations to audit
+- `bind_address`: Address to bind the web server to (defaults to `3000`, web crate only)
+- `sleep_seconds` (optional): Time to wait between audit cycles in seconds (defaults to 30, auditor crate only)
+- `namespaces`: Array of namespace configurations to audit (auditor crate only)
 - `signing`: Signing key configuration
 - `signature_storage`: Storage backend configuration
 - `namespace_storage`: Namespace state storage configuration
@@ -73,7 +74,7 @@ container_name = "your_container"
 connection_string = "your_connection_string"  # Optional in config file
 ```
 
-**Note:** Azure storage requires a connection string either in the config file or via the `SIGNATURE_STORAGE_CONNECTION_STRING` environment variable. The configuration will be validated at startup to ensure the connection string is available from one of these sources.
+**Note:** Azure storage requires a connection string either in the config file or via the `AKD_WATCH_SIGNATURE_STORAGE_CONNECTION_STRING` environment variable. The configuration will be validated at startup to ensure the connection string is available from one of these sources.
 
 ### Signing Configuration
 

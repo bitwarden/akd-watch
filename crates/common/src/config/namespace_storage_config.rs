@@ -1,6 +1,10 @@
 use config::ConfigError;
 use serde::{Deserialize, Serialize};
 
+use crate::storage::namespaces::{
+    FileNamespaceRepository, InMemoryNamespaceRepository, NamespaceStorage,
+};
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(tag = "type")]
 pub enum NamespaceStorageConfig {
@@ -40,6 +44,18 @@ impl NamespaceStorageConfig {
                 }
 
                 Ok(())
+            }
+        }
+    }
+
+    /// Creates a namespace storage instance based on the given configuration.
+    pub fn build_namespace_storage(&self) -> NamespaceStorage {
+        match self {
+            NamespaceStorageConfig::File { state_file } => {
+                NamespaceStorage::File(FileNamespaceRepository::new(state_file.clone()))
+            }
+            NamespaceStorageConfig::InMemory => {
+                NamespaceStorage::InMemory(InMemoryNamespaceRepository::new())
             }
         }
     }

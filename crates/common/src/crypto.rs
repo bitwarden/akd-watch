@@ -9,6 +9,7 @@ use uuid::Uuid;
 pub struct SigningKey {
     signing_key: Arc<RwLock<ed25519_dalek::SigningKey>>,
     key_id: Uuid,
+    created_at: DateTime<Utc>,
     not_after_date: DateTime<Utc>,
 }
 
@@ -24,11 +25,13 @@ impl SigningKey {
     pub fn new(
         signing_key: ed25519_dalek::SigningKey,
         key_id: Uuid,
+        created_at: DateTime<Utc>,
         not_after_date: DateTime<Utc>,
     ) -> Self {
         Self {
             signing_key: Arc::new(RwLock::new(signing_key)),
             key_id,
+            created_at,
             not_after_date,
         }
     }
@@ -41,6 +44,7 @@ impl SigningKey {
         Self {
             signing_key: Arc::new(RwLock::new(signing_key)),
             key_id,
+            created_at: Utc::now(),
             not_after_date: Utc::now() + lifetime,
         }
     }
@@ -52,7 +56,7 @@ impl SigningKey {
                 .map_err(|_| "Poisoned Signing Key Cache")?
                 .verifying_key(),
             key_id: self.key_id,
-            not_after_date: self.not_after_date,
+            not_before: self.created_at,
         })
     }
 
@@ -70,6 +74,7 @@ impl SigningKey {
 pub struct SerializableSigningKey {
     pub signing_key: ed25519_dalek::SigningKey,
     pub key_id: Uuid,
+    pub created_at: DateTime<Utc>,
     pub not_after_date: DateTime<Utc>,
 }
 
@@ -78,6 +83,7 @@ impl From<SerializableSigningKey> for SigningKey {
         SigningKey {
             signing_key: Arc::new(RwLock::new(value.signing_key)),
             key_id: value.key_id,
+            created_at: value.created_at,
             not_after_date: value.not_after_date,
         }
     }
@@ -92,6 +98,7 @@ impl From<SigningKey> for SerializableSigningKey {
                 .expect("Poisoned Signing Key Cache")
                 .clone(),
             key_id: value.key_id,
+            created_at: value.created_at,
             not_after_date: value.not_after_date,
         }
     }
@@ -122,5 +129,5 @@ impl<'de> Deserialize<'de> for SigningKey {
 pub struct VerifyingKey {
     pub verifying_key: ed25519_dalek::VerifyingKey,
     pub key_id: Uuid,
-    pub not_after_date: DateTime<Utc>,
+    pub not_before: DateTime<Utc>,
 }

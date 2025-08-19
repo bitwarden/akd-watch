@@ -127,12 +127,17 @@ impl SigningKeyRepository for MockSigningKeyRepository {
         }
     }
 
-    fn verifying_key_repository(
-        &self,
-    ) -> Result<VerifyingKeyStorage, SigningKeyRepositoryError> {
+    fn verifying_key_repository(&self) -> Result<VerifyingKeyStorage, SigningKeyRepositoryError> {
+        let keys = self
+            .expired_keys
+            .read()
+            .unwrap()
+            .iter()
+            .cloned()
+            .chain(std::iter::once(self.current_key.read().unwrap().clone()))
+            .collect::<Vec<_>>();
         Ok(VerifyingKeyStorage::Mock(MockVerifyingKeyRepository::new(
-            self.current_key.clone(),
-            self.expired_keys.clone(),
+            Arc::new(RwLock::new(keys)),
             self.should_fail.clone(),
         )))
     }
@@ -141,22 +146,13 @@ impl SigningKeyRepository for MockSigningKeyRepository {
 /// Mock verifying key repository for testing
 #[derive(Clone, Debug)]
 pub struct MockVerifyingKeyRepository {
-    current_key: Arc<RwLock<SigningKey>>,
-    expired_keys: Arc<RwLock<Vec<SigningKey>>>,
+    keys: Arc<RwLock<Vec<SigningKey>>>,
     should_fail: Arc<RwLock<bool>>,
 }
 
 impl MockVerifyingKeyRepository {
-    fn new(
-        current_key: Arc<RwLock<SigningKey>>,
-        expired_keys: Arc<RwLock<Vec<SigningKey>>>,
-        should_fail: Arc<RwLock<bool>>,
-    ) -> Self {
-        Self {
-            current_key,
-            expired_keys,
-            should_fail,
-        }
+    fn new(keys: Arc<RwLock<Vec<SigningKey>>>, should_fail: Arc<RwLock<bool>>) -> Self {
+        Self { keys, should_fail }
     }
 }
 
@@ -166,23 +162,14 @@ impl VerifyingKeyRepository for MockVerifyingKeyRepository {
         key_id: Uuid,
     ) -> Result<Option<VerifyingKey>, VerifyingKeyRepositoryError> {
         let should_fail = *self.should_fail.read().unwrap();
-        let current_key = self.current_key.clone();
-        let expired_keys = self.expired_keys.clone();
+        let keys = self.keys.clone();
 
         if should_fail {
             return Ok(None);
         }
 
-        // Check current key
-        if let Ok(current_key) = current_key.read().unwrap().verifying_key() {
-            if current_key.key_id == key_id {
-                return Ok(Some(current_key));
-            }
-        }
-
-        // Check expired keys
-        for expired_key in expired_keys.read().unwrap().iter() {
-            if let Ok(verifying_key) = expired_key.verifying_key() {
+        for keys in keys.read().unwrap().iter() {
+            if let Ok(verifying_key) = keys.verifying_key() {
                 if verifying_key.key_id == key_id {
                     return Ok(Some(verifying_key));
                 }
@@ -190,5 +177,23 @@ impl VerifyingKeyRepository for MockVerifyingKeyRepository {
         }
 
         Ok(None)
+    }
+
+    async fn list_keys(&self) -> Result<Vec<VerifyingKey>, VerifyingKeyRepositoryError> {
+        let should_fail = *self.should_fail.read().unwrap();
+        if should_fail {
+            return Err(VerifyingKeyRepositoryError::Custom(
+                "Mock failure for listing keys".to_string(),
+            ));
+        }
+
+        let keys = self.keys.read().unwrap();
+        let mut verifying_keys = Vec::new();
+        for key in keys.iter() {
+            if let Ok(verifying_key) = key.verifying_key() {
+                verifying_keys.push(verifying_key);
+            }
+        }
+        Ok(verifying_keys)
     }
 }
