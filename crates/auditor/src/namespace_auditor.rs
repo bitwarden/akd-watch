@@ -389,9 +389,8 @@ where
         );
 
         // decode the blob
-        let (end_epoch, previous_hash_from_blob, end_hash, proof) = audit_blob
-            .decode()
-            .map_err(AuditError::LocalAuditorError)?;
+        let (end_epoch, previous_hash_from_blob, end_hash, proof) =
+            audit_blob.decode().map_err(AuditError::LocalAuditorError)?;
 
         // Get and verify the previous epoch's signature to establish the chain
         let previous_hash = if blob_name.epoch == *namespace_info.starting_epoch.value() {

@@ -109,8 +109,7 @@ impl Serialize for SigningKey {
     where
         S: serde::Serializer,
     {
-        let serializable =
-            SerializableSigningKey::from(self.clone());
+        let serializable = SerializableSigningKey::from(self.clone());
         serializable.serialize(serializer)
     }
 }

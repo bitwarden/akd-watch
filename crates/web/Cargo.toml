@@ -8,17 +8,17 @@ license.workspace = true
 keywords.workspace = true
 
 [dependencies]
-akd = {workspace = true}
+akd = { workspace = true }
+akd_watch_common = { workspace = true }
 anyhow = { workspace = true }
-axum = {version = "0.7", features = ["macros"] }
-config = { workspace = true }
-hex = { workspace = true}
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+axum = { version = "0.7", features = ["macros"] }
 azure_storage = "0.17"
 azure_storage_blobs = "0.17"
+config = { workspace = true }
+hex = { workspace = true }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "2.0.12"
+tokio = { workspace = true }
 tracing = "0.1"
 tracing-subscriber = "0.3"
-thiserror = "2.0.12"
-akd_watch_common = { workspace = true }
-tokio = { workspace = true }

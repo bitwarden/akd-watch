@@ -15,7 +15,7 @@ pub struct SigningConfig {
     /// Path to the signing key file
     pub key_dir: String,
     /// Key lifetime in seconds
-    /// Defaults to [`DEFAULT_KEY_LIFETIME_SECONDS`]
+    /// Defaults to 30 days
     #[serde(default = "default_key_lifetime_seconds")]
     pub key_lifetime_seconds: i64,
 }

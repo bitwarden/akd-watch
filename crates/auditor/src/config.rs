@@ -25,7 +25,7 @@ pub enum ConfigNamespaceStatus {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AuditorConfig {
     /// How long to sleep between audit cycles
-    /// Defaults given by [`DEFAULT_SLEEP_SECONDS`]
+    /// Defaults to 30 seconds
     #[serde(default = "default_sleep_seconds")]
     pub sleep_seconds: u64,
 
@@ -139,8 +139,8 @@ impl NamespaceConfig {
         );
 
         // Use existing last_verified_epoch if available
-        let existing_last_verified_epoch = existing_namespace_info
-            .and_then(|info| info.last_verified_epoch);
+        let existing_last_verified_epoch =
+            existing_namespace_info.and_then(|info| info.last_verified_epoch);
         let (last_verified_epoch, last_verified_epoch_changed) =
             Self::resolve_last_verified_epoch(self.starting_epoch, existing_last_verified_epoch);
 

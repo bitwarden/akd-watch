@@ -1,10 +1,12 @@
 use std::collections::HashMap;
 
-use akd_watch_common::storage::{namespaces::NamespaceStorage, signatures::SignatureStorage, signing_keys::VerifyingKeyStorage};
+use akd_watch_common::storage::{
+    namespaces::NamespaceStorage, signatures::SignatureStorage, signing_keys::VerifyingKeyStorage,
+};
+use anyhow::{Context, Result};
 use axum::Router;
 use tokio::net::TcpListener;
 use tracing::{error, info, instrument, trace};
-use anyhow::{Context, Result};
 
 use crate::web_config::WebConfig;
 
@@ -20,7 +22,7 @@ pub(crate) struct AppState {
 }
 
 #[instrument(skip_all, name = "start_web")]
-pub async fn start() -> Result<()>{
+pub async fn start() -> Result<()> {
     trace!("Starting web server");
 
     // Load configuration
@@ -58,9 +60,13 @@ pub async fn start() -> Result<()>{
 
     // Start server
     let addr = config.socket_addr();
-    let listener = TcpListener::bind(addr).await.context("Socket binding failed")?;
+    let listener = TcpListener::bind(addr)
+        .await
+        .context("Socket binding failed")?;
     println!("Listening on http://{}", addr);
-    axum::serve(listener, app.into_make_service()).await.context("Server failed")?;
+    axum::serve(listener, app.into_make_service())
+        .await
+        .context("Server failed")?;
 
     Ok(())
 }

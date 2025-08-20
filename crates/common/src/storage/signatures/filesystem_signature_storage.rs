@@ -98,8 +98,7 @@ impl SignatureRepository for FilesystemSignatureStorage {
         // Write the signature to a file in the epoch directory
         let signature_path = self.epoch_sig_path(epoch);
         let content = bincode::encode_to_vec(signature, BINCODE_CONFIG)?;
-        std::fs::write(&signature_path, content)
-            .map_err(SignatureStorageFileError::IoError)?;
+        std::fs::write(&signature_path, content).map_err(SignatureStorageFileError::IoError)?;
 
         Ok(())
     }

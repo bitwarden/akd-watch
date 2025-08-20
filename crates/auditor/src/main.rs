@@ -4,8 +4,8 @@ use tracing::{error, info};
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt()
-    .with_max_level(tracing::Level::INFO)
-    .init();
+        .with_max_level(tracing::Level::INFO)
+        .init();
 
     let (shutdown_tx, mut shutdown_rx) = tokio::sync::broadcast::channel(1);
 
@@ -24,5 +24,3 @@ async fn main() {
         }
     }
 }
-
-

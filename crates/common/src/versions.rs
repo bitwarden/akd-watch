@@ -71,7 +71,6 @@ impl From<Ciphersuite> for u32 {
     }
 }
 
-
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(into = "u32")]
 #[serde(from = "u32")]
@@ -82,7 +81,6 @@ pub enum AuditVersion {
     One = 0x0001,
     Unknown(u32),
 }
-
 
 impl From<u32> for AuditVersion {
     fn from(value: u32) -> Self {

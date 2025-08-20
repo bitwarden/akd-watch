@@ -93,10 +93,7 @@ impl AkdStorage for WhatsAppAkdStorage {
         let resp = reqwest::get(url).await?.bytes().await?;
         let data = resp.to_vec();
 
-        Ok(AuditBlob {
-            data,
-            name: *name,
-        })
+        Ok(AuditBlob { data, name: *name })
     }
 
     #[instrument(level = "info", skip_all, fields(base_url = self.base_url, epoch = epoch))]

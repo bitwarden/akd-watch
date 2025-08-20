@@ -12,23 +12,23 @@ build = "src/build.rs"
 testing = []
 
 [dependencies]
-serde = { workspace = true }
-serde_json = { workspace = true }
-prost = "0.13.5"
-bincode = { version = "2.0.1", features = ["serde"] }
-tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
-thiserror = { workspace = true }
 akd = { workspace = true }
+bincode = { version = "2.0.1", features = ["serde"] }
 chrono = { workspace = true }
 config = { workspace = true }
-hex = { workspace = true }
 ed25519-dalek = { version = "2.2.0", features = ["serde"] }
-uuid = { version = "1.17.0", features = ["v4", "serde"] }
+hex = { workspace = true }
+prost = "0.13.5"
+quick-xml = "0.38.0"
 rand = "0.9.1"
 reqwest = "0.12.22"
-quick-xml = "0.38.0"
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
 tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+uuid = { version = "1.17.0", features = ["v4", "serde"] }
 
 [dev-dependencies]
 mockito = "1.6.1"
