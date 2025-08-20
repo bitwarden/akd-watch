@@ -31,7 +31,7 @@ pub async fn info_handler(
         .iter()
         .map(|key| key.into())
         .collect::<Vec<KeyInfo>>();
-    Json(ServerConfiguration { keys }.into())
+    Json(ServerConfiguration { keys })
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]

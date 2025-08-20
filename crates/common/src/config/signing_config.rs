@@ -34,7 +34,7 @@ fn default_key_lifetime_seconds() -> i64 {
 
 impl SigningConfig {
     pub fn validate(&self) -> Result<(), ConfigError> {
-        Ok(validate_directory(&self.key_dir, "Signing key directory")?)
+        validate_directory(&self.key_dir, "Signing key directory")
     }
 
     /// Panics if initialization of key directory fails
@@ -59,7 +59,7 @@ impl VerifyingConfig {
             FileSigningKeyRepository::verifying_key_path(&self.key_dir),
         )
         .map_err(|e| {
-            ConfigError::Message(format!("Failed to create verifying key storage: {}", e))
+            ConfigError::Message(format!("Failed to create verifying key storage: {e}"))
         })?;
         Ok(VerifyingKeyStorage::File(repository))
     }
@@ -68,7 +68,7 @@ impl VerifyingConfig {
 fn validate_directory(path: &str, path_name: &str) -> Result<(), ConfigError> {
     if path.is_empty() {
         return Err(ConfigError::Message(
-            format!("{} cannot be empty", path_name).to_string(),
+            format!("{path_name} cannot be empty").to_string(),
         ));
     }
     let path = std::path::Path::new(path);

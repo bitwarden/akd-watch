@@ -15,6 +15,12 @@ pub struct MockSignatureStorage {
     should_fail_set: Arc<RwLock<bool>>,
 }
 
+impl Default for MockSignatureStorage {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MockSignatureStorage {
     pub fn new() -> Self {
         Self {

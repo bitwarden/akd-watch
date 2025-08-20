@@ -95,7 +95,7 @@ mod tests {
 
         let storage = AkdStorageFactory::create_storage(&namespace);
         assert!(matches!(storage, AkdStorageImpl::WhatsApp(_)));
-        assert!(format!("{}", storage).contains("WhatsApp"));
+        assert!(format!("{storage}").contains("WhatsApp"));
     }
 
     #[test]
@@ -111,6 +111,6 @@ mod tests {
 
         let storage = AkdStorageFactory::create_storage(&namespace);
         assert!(matches!(storage, AkdStorageImpl::Test(_)));
-        assert!(format!("{}", storage).contains("Test"));
+        assert!(format!("{storage}").contains("Test"));
     }
 }

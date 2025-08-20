@@ -15,6 +15,12 @@ pub struct InMemoryNamespaceRepository {
     namespaces: Arc<RwLock<HashMap<String, NamespaceInfo>>>,
 }
 
+impl Default for InMemoryNamespaceRepository {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl InMemoryNamespaceRepository {
     pub fn new() -> Self {
         Self {

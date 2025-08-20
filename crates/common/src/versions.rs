@@ -9,7 +9,9 @@ use serde::{Deserialize, Serialize};
 #[serde(into = "u32")]
 #[serde(from = "u32")]
 #[repr(u32)]
+#[derive(Default)]
 pub enum Ciphersuite {
+    #[default]
     ProtobufEd25519 = 0x00_01,
     BincodeEd25519 = 0x00_02,
     #[cfg(test)]
@@ -69,26 +71,18 @@ impl From<Ciphersuite> for u32 {
     }
 }
 
-impl Default for Ciphersuite {
-    fn default() -> Self {
-        Ciphersuite::ProtobufEd25519
-    }
-}
 
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(into = "u32")]
 #[serde(from = "u32")]
 #[repr(u32)]
+#[derive(Default)]
 pub enum AuditVersion {
+    #[default]
     One = 0x0001,
     Unknown(u32),
 }
 
-impl Default for AuditVersion {
-    fn default() -> Self {
-        AuditVersion::One
-    }
-}
 
 impl From<u32> for AuditVersion {
     fn from(value: u32) -> Self {

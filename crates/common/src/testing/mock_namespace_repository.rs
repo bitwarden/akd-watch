@@ -13,6 +13,12 @@ pub struct MockNamespaceRepository {
     namespaces: Arc<RwLock<HashMap<String, NamespaceInfo>>>,
 }
 
+impl Default for MockNamespaceRepository {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MockNamespaceRepository {
     pub fn new() -> Self {
         Self {

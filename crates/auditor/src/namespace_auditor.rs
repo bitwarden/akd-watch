@@ -276,7 +276,7 @@ where
         &self,
         namespace_info: &NamespaceInfo,
     ) -> Result<Vec<SerializableAuditBlobName>> {
-        let akd = AkdStorageFactory::create_storage(&namespace_info);
+        let akd = AkdStorageFactory::create_storage(namespace_info);
 
         // get the next epoch to audit
         let mut next_epoch = if let Some(last_verified_epoch) = namespace_info.last_verified_epoch {
@@ -347,10 +347,10 @@ where
         }
 
         // Verify the blob
-        let _verified = self.verify_blob(blob_name, namespace_info).await?;
+        self.verify_blob(blob_name, namespace_info).await?;
 
         // sign the proof
-        let _signed = self.sign_blob(blob_name, namespace_info).await?;
+        self.sign_blob(blob_name, namespace_info).await?;
 
         Ok(())
     }
@@ -361,7 +361,7 @@ where
         &self,
         epoch: &u64,
     ) -> Result<Option<EpochSignature>, AuditError> {
-        if let Some(signature) = self.signature_storage.get_signature(&epoch).await? {
+        if let Some(signature) = self.signature_storage.get_signature(epoch).await? {
             // Verify the signature
             let singing_key_repository = self.signing_key_repository.read().await;
             let verifying_repo = singing_key_repository.verifying_key_repository()?;
@@ -379,7 +379,7 @@ where
         namespace_info: &NamespaceInfo,
     ) -> Result<(), AuditError> {
         // download the blob
-        let audit_blob = AkdStorageFactory::create_storage(&namespace_info)
+        let audit_blob = AkdStorageFactory::create_storage(namespace_info)
             .get_proof(&blob_name.into())
             .await?;
         trace!(
@@ -391,7 +391,7 @@ where
         // decode the blob
         let (end_epoch, previous_hash_from_blob, end_hash, proof) = audit_blob
             .decode()
-            .map_err(|e| AuditError::LocalAuditorError(e))?;
+            .map_err(AuditError::LocalAuditorError)?;
 
         // Get and verify the previous epoch's signature to establish the chain
         let previous_hash = if blob_name.epoch == *namespace_info.starting_epoch.value() {
@@ -536,13 +536,11 @@ mod tests {
         );
         assert!(
             elapsed >= Duration::from_millis(40),
-            "Sleep duration too short: {:?}",
-            elapsed
+            "Sleep duration too short: {elapsed:?}"
         );
         assert!(
             elapsed <= Duration::from_millis(200),
-            "Sleep duration too long: {:?}",
-            elapsed
+            "Sleep duration too long: {elapsed:?}"
         );
     }
 
@@ -687,27 +685,23 @@ mod tests {
         assert_eq!(
             blob_names.len(),
             MAX_EPOCHS_PER_POLL,
-            "Should find {} epochs",
-            MAX_EPOCHS_PER_POLL
+            "Should find {MAX_EPOCHS_PER_POLL} epochs"
         );
         for i in 1..=MAX_EPOCHS_PER_POLL {
             assert_eq!(
                 blob_names[i - 1].previous_hash,
                 TestAkdStorage::hash(i as u64),
-                "Previous hash for epoch {} should match",
-                i
+                "Previous hash for epoch {i} should match"
             );
             assert_eq!(
                 blob_names[i - 1].current_hash,
                 TestAkdStorage::hash(i as u64),
-                "Current hash for epoch {} should match",
-                i
+                "Current hash for epoch {i} should match"
             );
             assert_eq!(
                 blob_names[i - 1].epoch,
                 i as u64,
-                "Epoch {} should be found",
-                i
+                "Epoch {i} should be found"
             );
         }
     }

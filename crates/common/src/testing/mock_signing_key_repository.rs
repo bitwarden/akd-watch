@@ -18,6 +18,12 @@ pub struct MockSigningKeyRepository {
     key_lifetime: Duration,
 }
 
+impl Default for MockSigningKeyRepository {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MockSigningKeyRepository {
     pub fn new() -> Self {
         let key_lifetime = Duration::days(30); // Default 30 days

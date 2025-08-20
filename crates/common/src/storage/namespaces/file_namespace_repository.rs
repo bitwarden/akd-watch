@@ -39,13 +39,13 @@ impl FileNamespaceRepository {
     ) -> Result<HashMap<String, NamespaceInfo>, NamespaceRepositoryInitializationError> {
         // Read file contents
         let file_content = std::fs::read_to_string(file_path).map_err(|e| {
-            NamespaceRepositoryInitializationError(format!("Failed to read file: {}", e))
+            NamespaceRepositoryInitializationError(format!("Failed to read file: {e}"))
         })?;
         debug!("Loaded namespace file content");
         // Parse file contents into NamespaceInfo entries
         let namespaces: HashMap<String, NamespaceInfo> = serde_json::from_str(&file_content)
             .map_err(|e| {
-                NamespaceRepositoryInitializationError(format!("Failed to parse file: {}", e))
+                NamespaceRepositoryInitializationError(format!("Failed to parse file: {e}"))
             })?;
         debug!("Parsed {} namespaces from file", namespaces.len());
         Ok(namespaces)
@@ -56,12 +56,12 @@ impl FileNamespaceRepository {
         locked_namespaces: &HashMap<String, NamespaceInfo>,
     ) -> Result<(), NamespaceRepositoryPersistenceError> {
         trace!("Persisting namespaces to file: {}", self.file_path);
-        let serialized = serde_json::to_string(&*locked_namespaces).map_err(|e| {
-            NamespaceRepositoryPersistenceError(format!("Failed to serialize namespaces: {}", e))
+        let serialized = serde_json::to_string(locked_namespaces).map_err(|e| {
+            NamespaceRepositoryPersistenceError(format!("Failed to serialize namespaces: {e}"))
         })?;
         trace!("Serialized namespaces: {}", serialized);
         std::fs::write(&self.file_path, serialized).map_err(|e| {
-            NamespaceRepositoryPersistenceError(format!("Failed to write to file: {}", e))
+            NamespaceRepositoryPersistenceError(format!("Failed to write to file: {e}"))
         })?;
         debug!(
             "Successfully persisted {} namespaces",

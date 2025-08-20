@@ -13,6 +13,12 @@ pub struct InMemorySignatureStorage {
     signatures: Arc<RwLock<HashMap<u64, EpochSignature>>>,
 }
 
+impl Default for InMemorySignatureStorage {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl InMemorySignatureStorage {
     pub fn new() -> Self {
         InMemorySignatureStorage {

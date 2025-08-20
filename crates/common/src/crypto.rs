@@ -110,7 +110,7 @@ impl Serialize for SigningKey {
         S: serde::Serializer,
     {
         let serializable =
-            SerializableSigningKey::try_from(self.clone()).map_err(serde::ser::Error::custom)?;
+            SerializableSigningKey::from(self.clone());
         serializable.serialize(serializer)
     }
 }

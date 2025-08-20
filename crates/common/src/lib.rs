@@ -244,8 +244,12 @@ mod tests {
 
     #[tokio::test]
     async fn test_timed_event_with_delay() {
-        let result = timed_event!(DEBUG, sleep(TokioDuration::from_millis(10))).await;
-        assert_eq!(result, ());
+        async fn delayed_future() -> i32 {
+            sleep(TokioDuration::from_millis(50)).await;
+            100
+        }
+        let result = timed_event!(DEBUG, delayed_future()).await;
+        assert_eq!(result, 100);
     }
 
     #[tokio::test]
@@ -286,7 +290,7 @@ mod tests {
     async fn complex_async_function(value: i32) -> Result<String, &'static str> {
         sleep(TokioDuration::from_millis(1)).await;
         if value > 0 {
-            Ok(format!("Value: {}", value))
+            Ok(format!("Value: {value}"))
         } else {
             Err("Invalid value")
         }

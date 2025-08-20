@@ -140,8 +140,7 @@ impl NamespaceConfig {
 
         // Use existing last_verified_epoch if available
         let existing_last_verified_epoch = existing_namespace_info
-            .map(|info| info.last_verified_epoch)
-            .flatten();
+            .and_then(|info| info.last_verified_epoch);
         let (last_verified_epoch, last_verified_epoch_changed) =
             Self::resolve_last_verified_epoch(self.starting_epoch, existing_last_verified_epoch);
 

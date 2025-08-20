@@ -68,7 +68,7 @@ impl SignatureRepository for FilesystemSignatureStorage {
         if let Some(path) = signature_path {
             trace!(epoch, path, "Found signature file, reading it");
             // Read the signature file to bytes
-            let bytes = std::fs::read(&path).map_err(|e| SignatureStorageFileError::IoError(e))?;
+            let bytes = std::fs::read(&path).map_err(SignatureStorageFileError::IoError)?;
             trace!(
                 epoch,
                 path,
@@ -93,13 +93,13 @@ impl SignatureRepository for FilesystemSignatureStorage {
         let epoch_dir = self.epoch_path(epoch);
 
         // ensure the epoch directory is created
-        std::fs::create_dir_all(&epoch_dir).map_err(|e| SignatureStorageFileError::IoError(e))?;
+        std::fs::create_dir_all(&epoch_dir).map_err(SignatureStorageFileError::IoError)?;
 
         // Write the signature to a file in the epoch directory
         let signature_path = self.epoch_sig_path(epoch);
         let content = bincode::encode_to_vec(signature, BINCODE_CONFIG)?;
         std::fs::write(&signature_path, content)
-            .map_err(|e| SignatureStorageFileError::IoError(e))?;
+            .map_err(SignatureStorageFileError::IoError)?;
 
         Ok(())
     }

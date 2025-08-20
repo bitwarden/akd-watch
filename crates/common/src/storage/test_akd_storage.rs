@@ -32,6 +32,12 @@ impl std::fmt::Debug for TestAkdStorage {
     }
 }
 
+impl Default for TestAkdStorage {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TestAkdStorage {
     pub fn new() -> Self {
         TestAkdStorage {
@@ -91,7 +97,7 @@ impl AkdStorage for TestAkdStorage {
             )
             .map_err(|_| AkdProofNameError::AuditBlobNameParsingError)
         } else {
-            Err(AkdProofNameError::ProofNotFound(epoch.clone()))
+            Err(AkdProofNameError::ProofNotFound(*epoch))
         }
     }
 }

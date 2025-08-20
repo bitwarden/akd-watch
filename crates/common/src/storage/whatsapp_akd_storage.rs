@@ -13,6 +13,12 @@ pub struct WhatsAppAkdStorage {
     base_url: String,
 }
 
+impl Default for WhatsAppAkdStorage {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl WhatsAppAkdStorage {
     pub fn new() -> Self {
         WhatsAppAkdStorage {
@@ -89,7 +95,7 @@ impl AkdStorage for WhatsAppAkdStorage {
 
         Ok(AuditBlob {
             data,
-            name: name.clone(),
+            name: *name,
         })
     }
 
@@ -98,7 +104,7 @@ impl AkdStorage for WhatsAppAkdStorage {
         match self.get_key_for_epoch(epoch).await? {
             Some(key) => AuditBlobName::try_from(key.as_str())
                 .map_err(|_| AkdProofNameError::AuditBlobNameParsingError),
-            None => Err(AkdProofNameError::ProofNotFound(epoch.clone())),
+            None => Err(AkdProofNameError::ProofNotFound(*epoch)),
         }
     }
 }
@@ -121,14 +127,13 @@ mod tests {
   <MaxKeys>1000</MaxKeys>
   <IsTruncated>false</IsTruncated>
   <Contents>
-    <Key>{}</Key>
+    <Key>{key}</Key>
     <LastModified>2023-01-01T00:00:00.000Z</LastModified>
     <ETag>"abcd1234"</ETag>
     <Size>1024</Size>
     <StorageClass>STANDARD</StorageClass>
   </Contents>
-</ListBucketResult>"#,
-            key
+</ListBucketResult>"#
         )
     }
 
@@ -196,7 +201,7 @@ mod tests {
                 assert_eq!(key, EPOCH_KEY, "Key should match expected value");
             }
             Ok(None) => panic!("Key should be present"),
-            Err(e) => panic!("Error checking epoch: {}", e),
+            Err(e) => panic!("Error checking epoch: {e}"),
         }
     }
 
@@ -218,7 +223,7 @@ mod tests {
                 // Expected - no key found
             }
             Ok(Some(_)) => panic!("Should not find key for nonexistent epoch"),
-            Err(e) => panic!("Error checking epoch: {}", e),
+            Err(e) => panic!("Error checking epoch: {e}"),
         }
     }
 
@@ -242,7 +247,7 @@ mod tests {
                     "Proof name should match expected key"
                 );
             }
-            Err(e) => panic!("Error getting proof name: {}", e),
+            Err(e) => panic!("Error getting proof name: {e}"),
         }
     }
 
@@ -262,12 +267,11 @@ mod tests {
             Ok(_) => panic!("Should not find proof for nonexistent epoch"),
             Err(e) => {
                 mock.assert_async().await;
-                let error_message = format!("{}", e);
+                let error_message = format!("{e}");
                 assert!(
                     error_message
-                        .contains(&format!("Proof not found for epoch {}", nonexistent_epoch)),
-                    "Error message should indicate epoch not found: {}",
-                    error_message
+                        .contains(&format!("Proof not found for epoch {nonexistent_epoch}")),
+                    "Error message should indicate epoch not found: {error_message}"
                 );
             }
         }

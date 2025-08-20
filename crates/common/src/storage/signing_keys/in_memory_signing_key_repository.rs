@@ -282,8 +282,7 @@ mod tests {
         for &key_id in &key_ids[..3] {
             assert!(
                 expired_key_ids.contains(&key_id),
-                "Key {} should be in expired keys",
-                key_id
+                "Key {key_id} should be in expired keys"
             );
         }
 
@@ -293,8 +292,7 @@ mod tests {
             let verifying_key = verifying_repo.get_verifying_key(key_id).await.unwrap();
             assert!(
                 verifying_key.is_some(),
-                "Key {} should be available for verification",
-                key_id
+                "Key {key_id} should be available for verification"
             );
         }
     }

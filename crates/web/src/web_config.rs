@@ -40,8 +40,7 @@ impl WebConfig {
     pub fn validate(&self) -> Result<(), ConfigError> {
         if let Err(e) = self.bind_address.parse::<std::net::SocketAddr>() {
             return Err(ConfigError::Message(format!(
-                "Web bind_address is not a valid socket address: {}",
-                e
+                "Web bind_address is not a valid socket address: {e}"
             )));
         }
 

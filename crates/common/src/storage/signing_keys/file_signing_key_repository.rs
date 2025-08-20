@@ -36,13 +36,13 @@ impl KeyState {
         for key in &self.expired_keys {
             let verifying_key = key
                 .verifying_key()
-                .map_err(|e| SigningKeyRepositoryError::Custom(e))?;
+                .map_err(SigningKeyRepositoryError::Custom)?;
             result.push(verifying_key);
         }
         result.push(
             self.current_signing_key
                 .verifying_key()
-                .map_err(|e| SigningKeyRepositoryError::Custom(e))?,
+                .map_err(SigningKeyRepositoryError::Custom)?,
         );
         Ok(result)
     }
@@ -53,7 +53,7 @@ impl FileSigningKeyRepository {
         // Load from file if it exists, otherwise create a new one
         let initial_key_state =
             if std::path::Path::new(&Self::signing_key_path(&directory)).exists() {
-                let file_content = std::fs::read_to_string(&Self::signing_key_path(&directory))
+                let file_content = std::fs::read_to_string(Self::signing_key_path(&directory))
                     .expect("Failed to read signing key file");
                 serde_json::from_str::<KeyState>(&file_content)
                     .expect("Failed to deserialize signing key state")
@@ -79,7 +79,7 @@ impl FileSigningKeyRepository {
     }
 
     pub fn signing_key_path(dir: &str) -> String {
-        format!("{}/keys.json", dir)
+        format!("{dir}/keys.json")
     }
 
     fn _verifying_key_path(&self) -> String {
@@ -87,7 +87,7 @@ impl FileSigningKeyRepository {
     }
 
     pub fn verifying_key_path(dir: &str) -> String {
-        format!("{}/keys_verifying.json", dir)
+        format!("{dir}/keys_verifying.json")
     }
 
     pub fn rotate_signing_key(&self) -> Result<SigningKey, SigningKeyRepositoryError> {

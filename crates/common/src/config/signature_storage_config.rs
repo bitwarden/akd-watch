@@ -46,8 +46,7 @@ impl SignatureStorageConfig {
                 // Check if directory exists
                 if !std::path::Path::new(directory).exists() {
                     return Err(ConfigError::Message(format!(
-                        "File storage directory does not exist: {}",
-                        directory
+                        "File storage directory does not exist: {directory}"
                     )));
                 }
 
@@ -76,7 +75,7 @@ impl SignatureStorageConfig {
         let namespaces = namespace_storage
             .list_namespaces()
             .await
-            .map_err(|e| ConfigError::Message(format!("Failed to list namespaces: {}", e)))?;
+            .map_err(|e| ConfigError::Message(format!("Failed to list namespaces: {e}")))?;
 
         match self {
             SignatureStorageConfig::File { directory } => {

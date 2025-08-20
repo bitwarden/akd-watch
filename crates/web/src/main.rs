@@ -1,6 +1,5 @@
 use akd_watch_web::start;
 use tracing::error;
-use tracing_subscriber;
 
 #[tokio::main]
 async fn main() {

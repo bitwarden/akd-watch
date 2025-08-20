@@ -55,8 +55,7 @@ pub async fn audit_query_handler(
         signature_storage
             .get(&namespace)
             .ok_or(ApiError::BadRequest(format!(
-                "namespace {} not found",
-                namespace
+                "namespace {namespace} not found"
             )))?;
     trace!(namespace, epoch, "Found namespace storage for audit query");
 
