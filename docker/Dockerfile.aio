@@ -1,0 +1,59 @@
+# Optimized multi-stage build for AIO (All-in-One) image
+# This version optimizes for build cache efficiency
+
+# Stage 1: Build dependencies
+FROM rust:1.88.0-alpine3.20 AS chef
+RUN apk add --no-cache musl-dev && cargo install cargo-chef
+WORKDIR /app
+
+# Stage 2: Prepare dependencies
+FROM chef AS planner
+COPY . .
+RUN cargo chef prepare --recipe-path recipe.json
+
+# Stage 3: Build dependencies (cached layer)
+FROM chef AS builder
+COPY --from=planner /app/recipe.json recipe.json
+
+# Install system dependencies
+RUN apk add --no-cache \
+    openssl-dev \
+    openssl-libs-static \
+    protobuf-dev
+
+# Build dependencies - this layer will be cached as long as dependencies don't change
+RUN cargo chef cook --release --recipe-path recipe.json
+
+# Stage 4: Build application
+FROM builder AS app-builder
+COPY . .
+
+# Build the AIO binary in release mode
+RUN cargo build --release --bin akd_watch_aio
+
+# Create directory structure for final image
+RUN mkdir -p /app/runtime/etc/akd-watch && \
+    cp config.example.toml /app/runtime/etc/akd-watch/config.toml && \
+    chown -R 65532:65532 /app/runtime
+
+# Stage 5: Create the final distroless image
+FROM gcr.io/distroless/cc-debian12:nonroot
+
+# Copy the binary from the builder stage
+COPY --from=app-builder /app/target/release/akd_watch_aio /usr/local/bin/akd_watch_aio
+
+# Copy the configuration directory structure
+COPY --from=app-builder /app/runtime/etc/akd-watch /etc/akd-watch
+
+# Switch to non-root user
+USER 65532:65532
+
+# Expose the default port for the web service
+EXPOSE 8080
+
+# Add health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD ["/usr/local/bin/akd_watch_aio", "--health-check"] || exit 1
+
+# Set the entrypoint
+ENTRYPOINT ["/usr/local/bin/akd_watch_aio"]

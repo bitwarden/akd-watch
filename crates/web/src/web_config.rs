@@ -24,9 +24,24 @@ pub struct WebConfig {
 }
 
 impl WebConfig {
+    /// Load configuration from multiple sources in order of priority:
+    /// 1. Environment variables (prefixed with AKD_WATCH_) - always applied with highest priority
+    /// 2. Configuration file from AKD_WATCH_CONFIG_PATH environment variable (if set)
+    /// 3. OR default configuration file (config.toml, config.yaml, config.json) in working directory
+    /// 
+    /// Note: Only one config file source is used - either custom path OR default location
     pub fn load() -> Result<Self, ConfigError> {
-        let config = Config::builder()
-            .add_source(File::with_name("config").required(false))
+        let mut builder = Config::builder();
+        
+        // Check for custom config path via environment variable
+        if let Ok(config_path) = std::env::var("AKD_WATCH_CONFIG_PATH") {
+            builder = builder.add_source(File::with_name(&config_path).required(true));
+        } else {
+            // Fall back to default config file locations
+            builder = builder.add_source(File::with_name("config").required(false));
+        }
+        
+        let config = builder
             .add_source(Environment::with_prefix("AKD_WATCH").separator("_"))
             .build()?;
         let web_config = config.try_deserialize::<WebConfig>()?;

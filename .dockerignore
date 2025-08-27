@@ -1,0 +1,26 @@
+# Git files
+.git
+.gitignore
+
+# Rust build artifacts
+target/
+Cargo.lock
+
+# IDE files
+.vscode/
+.idea/
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Configuration examples (we copy what we need explicitly)
+config.toml
+config.examples.toml
+
+# GitHub workflows
+.github/
+
+# Spell check
+.cspell.jsonc

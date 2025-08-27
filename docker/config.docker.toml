@@ -1,0 +1,46 @@
+# Docker deployment configuration for akd-watch
+# This configuration uses persistent file storage that can be shared between auditor and web services
+
+# How long to sleep between audit cycles (in seconds)
+sleep_seconds = 30
+
+# Signing/Verifying key configuration
+[signing]
+# Shared key directory mounted as volume
+key_dir = "/var/lib/akd-watch/keys/"
+key_lifetime_seconds = 2592000  # 30 days
+
+# Namespace Storage configuration
+# File-based storage for persistence across container restarts
+[namespace_storage]
+type = "File"
+state_file = "/var/lib/akd-watch/data/namespaces.json"
+
+# Signature Storage configuration
+# File-based storage for persistence and sharing between services
+[signature_storage]
+type = "File"
+directory = "/var/lib/akd-watch/data/signatures"
+
+# Alternative: Azure Blob storage for cloud deployments
+# [signature_storage]
+# type = "Azure"
+# account_name = "your_storage_account"
+# container_name = "akd-watch-signatures"
+# # Connection string can be provided via AKD_WATCH_SIGNATURE_STORAGE_CONNECTION_STRING env var
+
+# Namespace configurations
+[[namespaces]]
+name = "example-namespace"
+configuration_type = "WhatsAppV1"  # Options: "WhatsAppV1", "BitwardenV1"
+log_directory = "https://example.com/akd-logs/"
+starting_epoch = 0
+status = "Online"  # Options: "Online", "Disabled"
+
+# Add more namespaces as needed
+# [[namespaces]]
+# name = "another-namespace"
+# configuration_type = "BitwardenV1"
+# log_directory = "https://another-example.com/logs/"
+# starting_epoch = 0
+# status = "Online"
