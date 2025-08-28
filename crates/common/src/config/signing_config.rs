@@ -21,8 +21,7 @@ pub struct SigningConfig {
 /// Configuration for verifying keys only. This structure is a subset of the signing configuration.
 /// If you need to sign data, use [`SigningConfig`].
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct VerifyingConfig {
-}
+pub struct VerifyingConfig {}
 
 fn default_key_lifetime_seconds() -> i64 {
     DEFAULT_KEY_LIFETIME_SECONDS
@@ -50,7 +49,10 @@ impl VerifyingConfig {
     }
 
     /// Panics if initialization of key directory fails
-    pub fn build_verifying_key_storage(&self, data_directory: &str) -> Result<VerifyingKeyStorage, ConfigError> {
+    pub fn build_verifying_key_storage(
+        &self,
+        data_directory: &str,
+    ) -> Result<VerifyingKeyStorage, ConfigError> {
         let repository = FileVerifyingKeyRepository::new(
             FileSigningKeyRepository::verifying_key_path(data_directory),
         )

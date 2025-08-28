@@ -21,7 +21,9 @@ impl FilesystemSignatureStorage {
         std::fs::create_dir_all(root_path)
             .expect("Failed to create signature storage root directory");
 
-        FilesystemSignatureStorage { root_path: root_path.into() }
+        FilesystemSignatureStorage {
+            root_path: root_path.into(),
+        }
     }
 
     pub fn epoch_path(&self, epoch: &u64) -> String {

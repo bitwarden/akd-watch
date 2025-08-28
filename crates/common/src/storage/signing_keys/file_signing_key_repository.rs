@@ -57,8 +57,7 @@ impl FileSigningKeyRepository {
         let directory = Self::key_directory(data_directory);
 
         // Create the directory if it doesn't exist
-        std::fs::create_dir_all(&directory)
-            .expect("Failed to create signing key directory");
+        std::fs::create_dir_all(&directory).expect("Failed to create signing key directory");
 
         // Load from file if it exists, otherwise create a new one
         let initial_key_state =

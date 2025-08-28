@@ -36,7 +36,9 @@ impl AuditorApp {
 
         // Initialize repositories and storage based on config
         let namespace_repository = {
-            let mut namespace_repository = config.namespace_storage.build_namespace_storage(&config.data_directory());
+            let mut namespace_repository = config
+                .namespace_storage
+                .build_namespace_storage(&config.data_directory());
             Self::populate_namespace_repository(&mut namespace_repository, &config)
                 .await
                 .with_context(|| "Failed to populate namespace repository")?;
@@ -46,8 +48,11 @@ impl AuditorApp {
             .signature_storage
             .build_signature_storage(&namespace_repository, &config.data_directory())
             .await?;
-        let signing_key_repository =
-            Arc::new(RwLock::new(config.signing.build_signing_key_storage(&config.data_directory())));
+        let signing_key_repository = Arc::new(RwLock::new(
+            config
+                .signing
+                .build_signing_key_storage(&config.data_directory()),
+        ));
 
         // Create shutdown channel
         let (shutdown_tx, _) = broadcast::channel(1);

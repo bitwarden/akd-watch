@@ -31,17 +31,17 @@ impl WebConfig {
     /// 1. Environment variables (prefixed with AKD_WATCH__) - always applied with highest priority
     /// 2. Configuration file from AKD_WATCH_CONFIG_PATH environment variable (if set)
     /// 3. OR default configuration file (config.toml, config.yaml, config.json) in working directory
-    /// 
+    ///
     /// Environment variable naming:
     /// - Uses double underscore (__) as separator
     /// - For field `data_directory`, use `AKD_WATCH__DATA_DIRECTORY`
     /// - For field `bind_address`, use `AKD_WATCH__BIND_ADDRESS`
     /// - For nested fields like `signing.public_key_file`, use `AKD_WATCH__SIGNING__PUBLIC_KEY_FILE`
-    /// 
+    ///
     /// Note: Only one config file source is used - either custom path OR default location
     pub fn load() -> Result<Self, ConfigError> {
         let mut builder = Config::builder();
-        
+
         // Check for custom config path via environment variable
         if let Ok(config_path) = std::env::var("AKD_WATCH_CONFIG_PATH") {
             builder = builder.add_source(File::with_name(&config_path).required(true));
@@ -49,7 +49,7 @@ impl WebConfig {
             // Fall back to default config file locations
             builder = builder.add_source(File::with_name("config").required(false));
         }
-        
+
         let config = builder
             .add_source(Environment::with_prefix("AKD_WATCH").separator("__"))
             .build()?;
@@ -76,9 +76,10 @@ impl WebConfig {
         }
 
         // Validate data directory
-        let data_directory = self.data_directory.as_ref().ok_or_else(|| ConfigError::Message(
-            "Data directory must be set".to_string(),
-        ))?;
+        let data_directory = self
+            .data_directory
+            .as_ref()
+            .ok_or_else(|| ConfigError::Message("Data directory must be set".to_string()))?;
         if data_directory.is_empty() {
             return Err(ConfigError::Message(
                 format!("Data directory cannot be empty").to_string(),
@@ -97,7 +98,6 @@ impl WebConfig {
                 path.display()
             )));
         }
-
 
         self.namespace_storage.validate(&data_directory)?;
         self.signature_storage.validate(&data_directory)?;

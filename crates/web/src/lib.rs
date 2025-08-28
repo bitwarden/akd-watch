@@ -37,7 +37,9 @@ pub async fn start() -> Result<()> {
     info!("Starting web server with configuration: {:?}", config);
 
     // Initialize application state
-    let namespace_storage = config.namespace_storage.build_namespace_storage(&config.data_directory());
+    let namespace_storage = config
+        .namespace_storage
+        .build_namespace_storage(&config.data_directory());
     let signature_storage = config
         .signature_storage
         .build_signature_storage(&namespace_storage, &config.data_directory())

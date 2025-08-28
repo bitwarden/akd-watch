@@ -26,8 +26,7 @@ impl FileNamespaceRepository {
 
     pub fn new(directory_path: &str) -> Self {
         // Create the directory if it doesn't exist
-        std::fs::create_dir_all(&directory_path)
-            .expect("Failed to create namespace directory");
+        std::fs::create_dir_all(&directory_path).expect("Failed to create namespace directory");
 
         // Load existing namespaces from file, if it exists
         let file_path = Self::file_path(&directory_path);

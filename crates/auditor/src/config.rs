@@ -69,16 +69,16 @@ impl AuditorConfig {
     /// 1. Environment variables (prefixed with AKD_WATCH__) - always applied with highest priority
     /// 2. Configuration file from AKD_WATCH_CONFIG_PATH environment variable (if set)
     /// 3. OR default configuration file (config.toml, config.yaml, config.json) in working directory
-    /// 
+    ///
     /// Environment variable naming:
     /// - Uses double underscore (__) as separator
     /// - For field `data_directory`, use `AKD_WATCH__DATA_DIRECTORY`
     /// - For nested fields like `signing.key_lifetime_seconds`, use `AKD_WATCH__SIGNING__KEY_LIFETIME_SECONDS`
-    /// 
+    ///
     /// Note: Only one config file source is used - either custom path OR default location
     pub fn load() -> Result<Self, ConfigError> {
         let mut builder = Config::builder();
-        
+
         // Check for custom config path via environment variable
         if let Ok(config_path) = std::env::var("AKD_WATCH_CONFIG_PATH") {
             builder = builder.add_source(File::with_name(&config_path).required(true));
@@ -86,12 +86,12 @@ impl AuditorConfig {
             // Fall back to default config file locations
             builder = builder.add_source(File::with_name("config").required(false));
         }
-        
+
         let config = builder
             // Add environment variables with prefix "AKD_WATCH_"
             .add_source(Environment::with_prefix("AKD_WATCH").separator("__"))
             .build()?;
-        
+
         let auditor_config: Self = config.try_deserialize()?;
 
         auditor_config.validate()?;
@@ -124,9 +124,10 @@ impl AuditorConfig {
     /// Validate the entire auditor configuration
     pub fn validate(&self) -> Result<(), ConfigError> {
         // Validate data directory
-        let data_directory = self.data_directory.as_ref().ok_or_else(|| ConfigError::Message(
-            "Data directory must be set".to_string(),
-        ))?;
+        let data_directory = self
+            .data_directory
+            .as_ref()
+            .ok_or_else(|| ConfigError::Message("Data directory must be set".to_string()))?;
         if data_directory.is_empty() {
             return Err(ConfigError::Message(
                 format!("Data directory cannot be empty").to_string(),

@@ -83,10 +83,16 @@ impl SignatureStorageConfig {
         match self {
             SignatureStorageConfig::File => {
                 for ns_config in namespaces {
-                    let ns_directory = format!("{}/{}", Self::signatures_directory(data_directory), ns_config.name.clone());
+                    let ns_directory = format!(
+                        "{}/{}",
+                        Self::signatures_directory(data_directory),
+                        ns_config.name.clone()
+                    );
                     storage_map.insert(
                         ns_config.name.clone(),
-                        SignatureStorage::Filesystem(FilesystemSignatureStorage::new(&ns_directory)),
+                        SignatureStorage::Filesystem(FilesystemSignatureStorage::new(
+                            &ns_directory,
+                        )),
                     );
                 }
             }
