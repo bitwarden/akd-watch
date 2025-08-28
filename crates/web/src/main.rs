@@ -8,7 +8,7 @@ async fn main() {
         .init();
 
     if let Err(e) = start().await {
-        error!(error = %e, "Application error");
+        error!(error = ?e, "Application error");
         std::process::exit(1);
     }
 }

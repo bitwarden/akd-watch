@@ -18,7 +18,7 @@ async fn main() {
         }
         result = handle => {
             if let Err(e) = result {
-                error!(error = %e, "Application error");
+                error!(error = ?e, "Application error");
                 std::process::exit(1);
             }
         }

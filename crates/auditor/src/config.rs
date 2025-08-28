@@ -66,9 +66,14 @@ pub struct NamespaceConfig {
 
 impl AuditorConfig {
     /// Load configuration from multiple sources in order of priority:
-    /// 1. Environment variables (prefixed with AKD_WATCH_) - always applied with highest priority
+    /// 1. Environment variables (prefixed with AKD_WATCH__) - always applied with highest priority
     /// 2. Configuration file from AKD_WATCH_CONFIG_PATH environment variable (if set)
     /// 3. OR default configuration file (config.toml, config.yaml, config.json) in working directory
+    /// 
+    /// Environment variable naming:
+    /// - Uses double underscore (__) as separator
+    /// - For field `data_directory`, use `AKD_WATCH__DATA_DIRECTORY`
+    /// - For nested fields like `signing.key_lifetime_seconds`, use `AKD_WATCH__SIGNING__KEY_LIFETIME_SECONDS`
     /// 
     /// Note: Only one config file source is used - either custom path OR default location
     pub fn load() -> Result<Self, ConfigError> {
@@ -84,9 +89,9 @@ impl AuditorConfig {
         
         let config = builder
             // Add environment variables with prefix "AKD_WATCH_"
-            .add_source(Environment::with_prefix("AKD_WATCH").separator("_"))
+            .add_source(Environment::with_prefix("AKD_WATCH").separator("__"))
             .build()?;
-
+        
         let auditor_config: Self = config.try_deserialize()?;
 
         auditor_config.validate()?;
@@ -106,7 +111,7 @@ impl AuditorConfig {
     pub fn load_from_file(path: &str) -> Result<Self, ConfigError> {
         let config = Config::builder()
             .add_source(File::with_name(path))
-            .add_source(Environment::with_prefix("AKD_WATCH").separator("_"))
+            .add_source(Environment::with_prefix("AKD_WATCH").separator("__"))
             .build()?;
 
         let auditor_config: Self = config.try_deserialize()?;

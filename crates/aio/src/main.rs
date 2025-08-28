@@ -12,14 +12,14 @@ async fn main() -> Result<()> {
     // Start the auditor service in a separate task
     let auditor_handle = tokio::spawn(async move {
         if let Err(e) = akd_watch_auditor::start(&mut shutdown_rx).await {
-            error!("Auditor service failed: {}", e);
+            error!(error = ?e, "Auditor service failed");
         }
     });
 
     // Start the web service
     let web_handle = tokio::spawn(async {
         if let Err(e) = akd_watch_web::start().await {
-            error!("Web service failed: {}", e);
+            error!(error = ?e, "Web service failed");
         }
     });
 
