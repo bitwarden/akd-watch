@@ -29,8 +29,7 @@ impl NamespaceStorageConfig {
                 // Validate the directory exists
                 if !std::path::Path::new(data_directory).exists() {
                     return Err(ConfigError::Message(format!(
-                        "Data directory does not exist: {}",
-                        data_directory
+                        "Data directory does not exist: {data_directory}"
                     )));
                 }
 

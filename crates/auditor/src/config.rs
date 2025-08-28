@@ -130,7 +130,7 @@ impl AuditorConfig {
             .ok_or_else(|| ConfigError::Message("Data directory must be set".to_string()))?;
         if data_directory.is_empty() {
             return Err(ConfigError::Message(
-                format!("Data directory cannot be empty").to_string(),
+                "Data directory cannot be empty".to_string().to_string(),
             ));
         }
         let path = std::path::Path::new(&data_directory);
@@ -148,9 +148,9 @@ impl AuditorConfig {
         }
 
         // Validate storage configuration
-        self.namespace_storage.validate(&data_directory)?;
-        self.signature_storage.validate(&data_directory)?;
-        self.signing.validate(&data_directory)?;
+        self.namespace_storage.validate(data_directory)?;
+        self.signature_storage.validate(data_directory)?;
+        self.signing.validate(data_directory)?;
 
         // TODO: Add validation for other configuration sections as needed
         // - signing key file existence

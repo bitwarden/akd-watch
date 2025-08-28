@@ -50,7 +50,7 @@ impl KeyState {
 
 impl FileSigningKeyRepository {
     pub fn key_directory(data_directory: &str) -> String {
-        format!("{}/keys", data_directory)
+        format!("{data_directory}/keys")
     }
 
     pub fn new(data_directory: &str, key_lifetime: Duration) -> Self {

@@ -43,8 +43,7 @@ impl SignatureStorageConfig {
                 // Check if directory exists
                 if !std::path::Path::new(data_directory).exists() {
                     return Err(ConfigError::Message(format!(
-                        "Data directory does not exist: {}",
-                        data_directory
+                        "Data directory does not exist: {data_directory}"
                     )));
                 }
 
@@ -65,7 +64,7 @@ impl SignatureStorageConfig {
     }
 
     pub fn signatures_directory(data_directory: &str) -> String {
-        format!("{}/signatures", data_directory)
+        format!("{data_directory}/signatures")
     }
 
     pub async fn build_signature_storage(

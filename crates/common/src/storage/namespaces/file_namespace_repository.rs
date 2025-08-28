@@ -21,15 +21,15 @@ pub struct FileNamespaceRepository {
 
 impl FileNamespaceRepository {
     pub fn file_path(directory: &str) -> String {
-        format!("{}/namespace_state.json", directory)
+        format!("{directory}/namespace_state.json")
     }
 
     pub fn new(directory_path: &str) -> Self {
         // Create the directory if it doesn't exist
-        std::fs::create_dir_all(&directory_path).expect("Failed to create namespace directory");
+        std::fs::create_dir_all(directory_path).expect("Failed to create namespace directory");
 
         // Load existing namespaces from file, if it exists
-        let file_path = Self::file_path(&directory_path);
+        let file_path = Self::file_path(directory_path);
         let namespaces = if std::path::Path::new(&file_path).exists() {
             Self::load_file(&file_path).expect("Failed to load namespaces from file")
         } else {
