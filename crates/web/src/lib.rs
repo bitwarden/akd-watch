@@ -37,15 +37,15 @@ pub async fn start() -> Result<()> {
     info!("Starting web server with configuration: {:?}", config);
 
     // Initialize application state
-    let namespace_storage = config.namespace_storage.build_namespace_storage();
+    let namespace_storage = config.namespace_storage.build_namespace_storage(&config.data_directory());
     let signature_storage = config
         .signature_storage
-        .build_signature_storage(&namespace_storage)
+        .build_signature_storage(&namespace_storage, &config.data_directory())
         .await
         .context("Failed to initialize signature storage")?;
     let verifying_key_storage = config
         .signing
-        .build_verifying_key_storage()
+        .build_verifying_key_storage(&config.data_directory())
         .context("Failed to initialize verifying key storage")?;
     let app_state = AppState {
         namespace_storage,

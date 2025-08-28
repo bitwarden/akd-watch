@@ -16,8 +16,12 @@ pub struct FilesystemSignatureStorage {
 const SIG_FILE_NAME: &str = "sig";
 
 impl FilesystemSignatureStorage {
-    pub fn new(root_path: String) -> Self {
-        FilesystemSignatureStorage { root_path }
+    pub fn new(root_path: &str) -> Self {
+        // Create the root directory if it doesn't exist
+        std::fs::create_dir_all(root_path)
+            .expect("Failed to create signature storage root directory");
+
+        FilesystemSignatureStorage { root_path: root_path.into() }
     }
 
     pub fn epoch_path(&self, epoch: &u64) -> String {

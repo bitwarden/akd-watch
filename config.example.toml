@@ -3,12 +3,12 @@
 
 # Optional: How long to sleep between audit cycles (in seconds, defaults to 30)
 sleep_seconds = 30
+# Data directory for file-based storage.
+data_directory = "/path/to/data/directory/"
 
 # Signing key configuration
 [signing]
 # Path to signing key file (required)
-# A verifying key file will be created at the same location with a .pub.json extension
-key_dir = "/path/to/signing/keys/"
 key_lifetime_seconds = 2592000  # 30 days in seconds. Optional, defaults to 30 days
 
 # Namespace Storage configuration - choose one of the following:
@@ -20,7 +20,6 @@ type = "InMemory"
 # Option 2: File-based storage (stores namespace state as JSON file)
 # [namespace_storage]
 # type = "File"
-# state_file = "/var/lib/akd-watch/namespaces.json"
 
 # Storage configuration - choose one of the following:
 
@@ -31,7 +30,6 @@ type = "InMemory"
 # Option 2: File-based storage (stores signatures as JSON files)
 # [signature_storage]
 # type = "File"
-# directory = "/var/lib/akd-watch/storage"
 
 # Option 3: Azure Blob storage
 # [signature_storage]

@@ -15,10 +15,7 @@ pub enum SignatureStorageConfig {
     InMemory,
 
     #[serde(rename = "File")]
-    File {
-        /// Directory path where files will be stored
-        directory: String,
-    },
+    File,
 
     #[serde(rename = "Azure")]
     Azure {
@@ -33,20 +30,21 @@ pub enum SignatureStorageConfig {
 
 impl SignatureStorageConfig {
     /// Validate that the storage configuration is complete and usable
-    pub fn validate(&self) -> Result<(), ConfigError> {
+    pub fn validate(&self, data_directory: &str) -> Result<(), ConfigError> {
         match self {
             SignatureStorageConfig::InMemory => Ok(()),
-            SignatureStorageConfig::File { directory } => {
-                if directory.is_empty() {
+            SignatureStorageConfig::File => {
+                if data_directory.is_empty() {
                     return Err(ConfigError::Message(
-                        "File storage directory cannot be empty".to_string(),
+                        "Data directory cannot be empty".to_string(),
                     ));
                 }
 
                 // Check if directory exists
-                if !std::path::Path::new(directory).exists() {
+                if !std::path::Path::new(data_directory).exists() {
                     return Err(ConfigError::Message(format!(
-                        "File storage directory does not exist: {directory}"
+                        "Data directory does not exist: {}",
+                        data_directory
                     )));
                 }
 
@@ -66,9 +64,14 @@ impl SignatureStorageConfig {
         }
     }
 
+    pub fn signatures_directory(data_directory: &str) -> String {
+        format!("{}/signatures", data_directory)
+    }
+
     pub async fn build_signature_storage(
         &self,
         namespace_storage: &NamespaceStorage,
+        data_directory: &str,
     ) -> Result<HashMap<String, SignatureStorage>, ConfigError> {
         let mut storage_map = HashMap::new();
 
@@ -78,12 +81,12 @@ impl SignatureStorageConfig {
             .map_err(|e| ConfigError::Message(format!("Failed to list namespaces: {e}")))?;
 
         match self {
-            SignatureStorageConfig::File { directory } => {
+            SignatureStorageConfig::File => {
                 for ns_config in namespaces {
-                    let ns_directory = format!("{}/{}", directory.clone(), ns_config.name.clone());
+                    let ns_directory = format!("{}/{}", Self::signatures_directory(data_directory), ns_config.name.clone());
                     storage_map.insert(
                         ns_config.name.clone(),
-                        SignatureStorage::Filesystem(FilesystemSignatureStorage::new(ns_directory)),
+                        SignatureStorage::Filesystem(FilesystemSignatureStorage::new(&ns_directory)),
                     );
                 }
             }
@@ -112,27 +115,24 @@ mod tests {
     fn test_storage_config_validation() {
         // Test InMemory - should always be valid
         let inmemory = SignatureStorageConfig::InMemory;
-        assert!(inmemory.validate().is_ok());
+        assert!(inmemory.validate("data_dir").is_ok());
 
         // Test File with valid directory that exists
-        let file_valid = SignatureStorageConfig::File {
-            directory: "/tmp".to_string(), // /tmp should exist on most systems
-        };
-        assert!(file_valid.validate().is_ok());
+        let file_valid = SignatureStorageConfig::File;
+        let directory = "/tmp"; // /tmp 
+        assert!(file_valid.validate(directory).is_ok());
 
         // Test File with empty directory
-        let file_empty = SignatureStorageConfig::File {
-            directory: "".to_string(),
-        };
-        let result = file_empty.validate();
+        let file_empty = SignatureStorageConfig::File;
+        let directory = "";
+        let result = file_empty.validate(directory);
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("cannot be empty"));
 
         // Test File with non-existent directory
-        let file_nonexistent = SignatureStorageConfig::File {
-            directory: "/this/directory/should/not/exist/hopefully/12345".to_string(),
-        };
-        let result = file_nonexistent.validate();
+        let file_nonexistent = SignatureStorageConfig::File;
+        let directory = "/this/directory/should/not/exist/hopefully/12345";
+        let result = file_nonexistent.validate(directory);
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("does not exist"));
 
@@ -142,7 +142,8 @@ mod tests {
             container_name: "test".to_string(),
             connection_string: Some("DefaultEndpointsProtocol=https;AccountName=test;".to_string()),
         };
-        assert!(azure_with_conn.validate().is_ok());
+        let directory = "this/shouldn't/matter";
+        assert!(azure_with_conn.validate(directory).is_ok());
 
         // Test Azure without connection string (should fail)
         let azure_no_conn = SignatureStorageConfig::Azure {
@@ -150,7 +151,7 @@ mod tests {
             container_name: "test".to_string(),
             connection_string: None,
         };
-        let result = azure_no_conn.validate();
+        let result = azure_no_conn.validate(directory);
         assert!(result.is_err());
         assert!(
             result

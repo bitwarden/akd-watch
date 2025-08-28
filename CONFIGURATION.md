@@ -13,6 +13,7 @@ See `config.example.toml` for a complete example configuration file.
 
 - `bind_address`: Address to bind the web server to (defaults to `3000`, web crate only)
 - `sleep_seconds` (optional): Time to wait between audit cycles in seconds (defaults to 30, auditor crate only)
+- `data_directory`: Directory to store data files for file-based storage backends
 - `namespaces`: Array of namespace configurations to audit (auditor crate only)
 - `signing`: Signing key configuration
 - `signature_storage`: Storage backend configuration
@@ -32,10 +33,7 @@ type = "InMemory"
 ```toml
 [namespace_storage]
 type = "File"
-state_file = "/var/lib/akd-watch/namespaces.json"
 ```
-
-When using file-based namespace storage, the state will be persisted in the specified JSON file at the location specified by `state_file`.
 
 ### Storage Configuration
 
@@ -51,19 +49,18 @@ type = "InMemory"
 ```toml
 [signature_storage]
 type = "File" 
-directory = "/var/lib/akd-watch/storage"
 ```
 
 When using file-based storage:
   ```
-  /var/lib/akd-watch/storage/
+  /var/lib/akd-watch/storage/signatures/namespace_name/
   ├── 1/
-  │   └── <digest_hash>.json
+  │   └── sig
   ├── 2/
-  │   └── <digest_hash>.json
+  │   └── sig
   └── ...
   ```
-  Each signature file is named after the digest (root hash) it verifies and contains the complete signature in JSON format.
+  Each signature file contains a protobuf serialization of the complete signature.
 
 **Azure Blob Storage:**
 ```toml
@@ -79,7 +76,6 @@ connection_string = "your_connection_string"  # Optional in config file
 ### Signing Configuration
 
 The signing key configuration:
-- `key_dir`: Path to a directory to store signing and verifying keys. Will store current and past keys for rotation support
 - `key_lifetime_seconds`: Lifetime of the signing key in seconds (defaults to 30 days)
 
 ### Namespace Configuration
@@ -108,10 +104,6 @@ export AUDITOR_NAMESPACES__0__STARTING_EPOCH=5
 ## Usage
 
 The auditor will:
-1. Look for `config.toml`, `config.yaml`, or `config.json` in the current directory
+1. Look for `config.toml`, `config.yaml`, or `config.json` in the current directory or in the configured path specified by the `AKD_WATCH_CONFIG_PATH` environment variable
 2. Apply any environment variable overrides
-3. Fall back to default configuration if no config file is found
-
-```bash
-./akd_watch_auditor
-```
+3. Fall back to defaults for non-required settings

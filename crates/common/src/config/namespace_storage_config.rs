@@ -11,35 +11,26 @@ pub enum NamespaceStorageConfig {
     #[serde(rename = "InMemory")]
     InMemory,
     #[serde(rename = "File")]
-    File {
-        /// file path where namespace state will be stored
-        state_file: String,
-    },
+    File,
 }
 
 impl NamespaceStorageConfig {
     /// Validate that the namespace storage configuration is complete and usable
-    pub fn validate(&self) -> Result<(), ConfigError> {
+    pub fn validate(&self, data_directory: &str) -> Result<(), ConfigError> {
         match self {
             NamespaceStorageConfig::InMemory => Ok(()),
-            NamespaceStorageConfig::File { state_file } => {
-                if state_file.is_empty() {
+            NamespaceStorageConfig::File => {
+                if data_directory.is_empty() {
                     return Err(ConfigError::Message(
-                        "Namespace storage state_file cannot be empty".to_string(),
+                        "Data directory cannot be empty".to_string(),
                     ));
                 }
 
                 // Validate the directory exists
-                let parent = std::path::Path::new(state_file).parent().ok_or_else(|| {
-                    ConfigError::Message(
-                        "Namespace storage state_file must have a valid parent directory"
-                            .to_string(),
-                    )
-                })?;
-                if !parent.exists() {
+                if !std::path::Path::new(data_directory).exists() {
                     return Err(ConfigError::Message(format!(
-                        "Namespace storage state_file parent directory does not exist: {}",
-                        parent.display()
+                        "Data directory does not exist: {}",
+                        data_directory
                     )));
                 }
 
@@ -49,10 +40,10 @@ impl NamespaceStorageConfig {
     }
 
     /// Creates a namespace storage instance based on the given configuration.
-    pub fn build_namespace_storage(&self) -> NamespaceStorage {
+    pub fn build_namespace_storage(&self, data_directory: &str) -> NamespaceStorage {
         match self {
-            NamespaceStorageConfig::File { state_file } => {
-                NamespaceStorage::File(FileNamespaceRepository::new(state_file.clone()))
+            NamespaceStorageConfig::File => {
+                NamespaceStorage::File(FileNamespaceRepository::new(data_directory))
             }
             NamespaceStorageConfig::InMemory => {
                 NamespaceStorage::InMemory(InMemoryNamespaceRepository::new())

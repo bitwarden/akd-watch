@@ -6,21 +6,17 @@ sleep_seconds = 30
 
 # Signing/Verifying key configuration
 [signing]
-# Shared key directory mounted as volume
-key_dir = "/var/lib/akd-watch/keys/"
 key_lifetime_seconds = 2592000  # 30 days
 
 # Namespace Storage configuration
 # File-based storage for persistence across container restarts
 [namespace_storage]
 type = "File"
-state_file = "/var/lib/akd-watch/data/namespaces.json"
 
 # Signature Storage configuration
 # File-based storage for persistence and sharing between services
 [signature_storage]
 type = "File"
-directory = "/var/lib/akd-watch/data/signatures"
 
 # Alternative: Azure Blob storage for cloud deployments
 # [signature_storage]

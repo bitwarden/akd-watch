@@ -13,6 +13,9 @@ pub struct WebConfig {
     #[serde(default = "default_bind_address")]
     pub bind_address: String,
 
+    /// Directory for storing runtime data (e.g. namespace info, signatures, keys)
+    data_directory: Option<String>,
+
     /// Configuration for namespace storage
     pub namespace_storage: NamespaceStorageConfig,
 
@@ -51,6 +54,13 @@ impl WebConfig {
         Ok(web_config)
     }
 
+    pub fn data_directory(&self) -> String {
+        self.data_directory
+            .as_ref()
+            .expect("Data directory must be set")
+            .to_string()
+    }
+
     /// Validate that the web configuration is complete and usable
     pub fn validate(&self) -> Result<(), ConfigError> {
         if let Err(e) = self.bind_address.parse::<std::net::SocketAddr>() {
@@ -59,8 +69,32 @@ impl WebConfig {
             )));
         }
 
-        self.namespace_storage.validate()?;
-        self.signature_storage.validate()?;
+        // Validate data directory
+        let data_directory = self.data_directory.as_ref().ok_or_else(|| ConfigError::Message(
+            "Data directory must be set".to_string(),
+        ))?;
+        if data_directory.is_empty() {
+            return Err(ConfigError::Message(
+                format!("Data directory cannot be empty").to_string(),
+            ));
+        }
+        let path = std::path::Path::new(&data_directory);
+        if !path.exists() {
+            return Err(ConfigError::Message(format!(
+                "Data directory does not exist: {}",
+                path.display()
+            )));
+        }
+        if !path.is_dir() {
+            return Err(ConfigError::Message(format!(
+                "Data directory is not a directory: {}",
+                path.display()
+            )));
+        }
+
+
+        self.namespace_storage.validate(&data_directory)?;
+        self.signature_storage.validate(&data_directory)?;
 
         Ok(())
     }

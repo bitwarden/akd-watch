@@ -29,6 +29,9 @@ pub struct AuditorConfig {
     #[serde(default = "default_sleep_seconds")]
     pub sleep_seconds: u64,
 
+    /// Directory for storing runtime data (e.g. namespace info, signatures)
+    data_directory: Option<String>,
+
     /// Namespace configurations to audit
     pub namespaces: Vec<NamespaceConfig>,
 
@@ -91,6 +94,13 @@ impl AuditorConfig {
         Ok(auditor_config)
     }
 
+    pub fn data_directory(&self) -> String {
+        self.data_directory
+            .as_ref()
+            .expect("Data directory must be set")
+            .to_string()
+    }
+
     /// Load configuration from a specific file
     #[allow(dead_code)]
     pub fn load_from_file(path: &str) -> Result<Self, ConfigError> {
@@ -108,10 +118,33 @@ impl AuditorConfig {
 
     /// Validate the entire auditor configuration
     pub fn validate(&self) -> Result<(), ConfigError> {
+        // Validate data directory
+        let data_directory = self.data_directory.as_ref().ok_or_else(|| ConfigError::Message(
+            "Data directory must be set".to_string(),
+        ))?;
+        if data_directory.is_empty() {
+            return Err(ConfigError::Message(
+                format!("Data directory cannot be empty").to_string(),
+            ));
+        }
+        let path = std::path::Path::new(&data_directory);
+        if !path.exists() {
+            return Err(ConfigError::Message(format!(
+                "Data directory does not exist: {}",
+                path.display()
+            )));
+        }
+        if !path.is_dir() {
+            return Err(ConfigError::Message(format!(
+                "Data directory is not a directory: {}",
+                path.display()
+            )));
+        }
+
         // Validate storage configuration
-        self.namespace_storage.validate()?;
-        self.signature_storage.validate()?;
-        self.signing.validate()?;
+        self.namespace_storage.validate(&data_directory)?;
+        self.signature_storage.validate(&data_directory)?;
+        self.signing.validate(&data_directory)?;
 
         // TODO: Add validation for other configuration sections as needed
         // - signing key file existence

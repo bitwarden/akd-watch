@@ -49,7 +49,17 @@ impl KeyState {
 }
 
 impl FileSigningKeyRepository {
-    pub fn new(directory: String, key_lifetime: Duration) -> Self {
+    pub fn key_directory(data_directory: &str) -> String {
+        format!("{}/keys", data_directory)
+    }
+
+    pub fn new(data_directory: &str, key_lifetime: Duration) -> Self {
+        let directory = Self::key_directory(data_directory);
+
+        // Create the directory if it doesn't exist
+        std::fs::create_dir_all(&directory)
+            .expect("Failed to create signing key directory");
+
         // Load from file if it exists, otherwise create a new one
         let initial_key_state =
             if std::path::Path::new(&Self::signing_key_path(&directory)).exists() {
@@ -180,6 +190,11 @@ impl FileVerifyingKeyRepository {
 
     fn populate_in_memory_map(&self) -> Result<(), VerifyingKeyRepositoryError> {
         let mut keys = self.verifying_keys.lock().expect("Mutex poisoned");
+        if !std::path::Path::new(&self.path).exists() {
+            // No file, so nothing to populate
+            return Ok(());
+        }
+
         let file_content =
             std::fs::read_to_string(&self.path).map_err(VerifyingKeyRepositoryError::IoError)?;
         let verifying_keys: Vec<VerifyingKey> = serde_json::from_str(&file_content)
