@@ -6,12 +6,12 @@ services:
     image: akd-watch/auditor:latest
     environment:
       - AKD_WATCH_CONFIG_PATH=/etc/akd-watch/config
+      - AKD_WATCH__DATA_DIRECTORY=/var/lib/akd-watch
     volumes:
       # Configuration file
       - ./config.toml:/etc/akd-watch/config.toml:ro
       # Shared persistent storage volumes
-      - akd-watch-data:/var/lib/akd-watch/data
-      - akd-watch-keys:/var/lib/akd-watch/keys
+      - ./data:/var/lib/akd-watch:rw
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
@@ -25,27 +25,18 @@ services:
       dockerfile: docker/Dockerfile.web
     image: akd-watch/web:latest
     ports:
-      - "8081:8080"
+      - "3000:3000"
     environment:
       - AKD_WATCH_CONFIG_PATH=/etc/akd-watch/config
+      - AKD_WATCH__DATA_DIRECTORY=/var/lib/akd-watch
     volumes:
       # Configuration file
       - ./config.toml:/etc/akd-watch/config.toml:ro
       # Shared persistent storage volumes (same as auditor)
-      - akd-watch-data:/var/lib/akd-watch/data
-      - akd-watch-keys:/var/lib/akd-watch/keys:ro  # Web only needs read access to keys
+      - ./data:/var/lib/akd-watch:ro
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
-    read_only: false
+    read_only: true
     tmpfs:
       - /tmp:noexec,nosuid,size=100m
-
-# Named volumes for persistent data sharing between services
-volumes:
-  akd-watch-data:
-    driver: local
-    # Stores namespace state and signature files
-  akd-watch-keys:
-    driver: local
-    # Stores signing/verifying keys

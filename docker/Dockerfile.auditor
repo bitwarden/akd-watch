@@ -33,10 +33,10 @@ COPY . .
 # Build the auditor binary in release mode
 RUN cargo build --release --bin akd_watch_auditor
 
-# Create directory structure for final image
-RUN mkdir -p /app/runtime/etc/akd-watch && \
-    cp config.example.toml /app/runtime/etc/akd-watch/config.toml && \
-    chown -R 65532:65532 /app/runtime
+# Create data directory structure
+RUN mkdir -p /app/runtime/var/lib/akd-watch && \
+    chmod 700 /app/runtime/var/lib/akd-watch && \
+    chown -R 65532:65532 /app/runtime/var/lib/akd-watch
 
 # Stage 5: Create the final distroless image
 FROM gcr.io/distroless/cc-debian12:nonroot
@@ -44,8 +44,8 @@ FROM gcr.io/distroless/cc-debian12:nonroot
 # Copy the binary from the builder stage
 COPY --from=app-builder /app/target/release/akd_watch_auditor /usr/local/bin/akd_watch_auditor
 
-# Copy the configuration directory structure
-COPY --from=app-builder /app/runtime/etc/akd-watch /etc/akd-watch
+# Copy the data directory with proper ownership
+COPY --from=app-builder /app/runtime/var/lib/akd-watch /var/lib/akd-watch
 
 # Switch to non-root user
 USER 65532:65532
