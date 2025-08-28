@@ -16,11 +16,11 @@ akd = { workspace = true }
 bincode = { version = "2.0.1", features = ["serde"] }
 chrono = { workspace = true }
 config = { workspace = true }
-ed25519-dalek = { version = "2.2.0", features = ["serde"] }
+ed25519-dalek = { workspace = true, features = ["serde"] }
 hex = { workspace = true }
 prost = "0.13.5"
 quick-xml = "0.38.0"
-rand = "0.9.1"
+rand = { workspace = true }
 reqwest = "0.12.22"
 serde = { workspace = true }
 serde_json = { workspace = true }
