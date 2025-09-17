@@ -3,96 +3,349 @@
   "description" : "Description",
   "documentation" : { },
   "id" : 1,
-  "lastModifiedDate" : "2025-07-24T19:13:14Z",
+  "lastModifiedAgent" : "structurizr-ui",
+  "lastModifiedDate" : "2025-09-17T12:13:18Z",
   "model" : {
     "properties" : {
       "structurizr.groupSeparator" : "/"
     },
     "softwareSystems" : [ {
+      "description" : "The client that depends on the AKD Watch to audit an AKD",
+      "documentation" : { },
+      "id" : "1",
+      "location" : "Unspecified",
+      "name" : "Client",
+      "properties" : {
+        "structurizr.dsl.identifier" : "client"
+      },
+      "relationships" : [ {
+        "description" : "Requests and validates audit signatures for required epochs",
+        "destinationId" : "23",
+        "id" : "35",
+        "sourceId" : "1",
+        "tags" : "Relationship",
+        "technology" : "http"
+      }, {
+        "description" : "Requests and validates audit signatures for required epochs",
+        "destinationId" : "6",
+        "id" : "36",
+        "linkedRelationshipId" : "35",
+        "sourceId" : "1",
+        "technology" : "http"
+      }, {
+        "description" : "Requests verifying key data",
+        "destinationId" : "24",
+        "id" : "37",
+        "sourceId" : "1",
+        "tags" : "Relationship",
+        "technology" : "http"
+      }, {
+        "description" : "Requests audit signatures",
+        "destinationId" : "25",
+        "id" : "38",
+        "sourceId" : "1",
+        "tags" : "Relationship",
+        "technology" : "http"
+      }, {
+        "description" : "Requests list of namespaces being audited",
+        "destinationId" : "26",
+        "id" : "39",
+        "sourceId" : "1",
+        "tags" : "Relationship",
+        "technology" : "http"
+      }, {
+        "description" : "Requests information about a specific namespace",
+        "destinationId" : "27",
+        "id" : "40",
+        "sourceId" : "1",
+        "tags" : "Relationship",
+        "technology" : "http"
+      }, {
+        "description" : "Requests configuration information to use in signature validation",
+        "destinationId" : "2",
+        "id" : "44",
+        "sourceId" : "1",
+        "tags" : "Relationship",
+        "technology" : "http"
+      }, {
+        "description" : "May directly request signatures if storage is public",
+        "destinationId" : "4",
+        "id" : "45",
+        "sourceId" : "1",
+        "tags" : "Relationship",
+        "technology" : "http"
+      } ],
+      "tags" : "Element,Software System,Client"
+    }, {
+      "description" : "The AKD that is being audited",
+      "documentation" : { },
+      "id" : "2",
+      "location" : "Unspecified",
+      "name" : "AKD",
+      "properties" : {
+        "structurizr.dsl.identifier" : "akd"
+      },
+      "tags" : "Element,Software System,External"
+    }, {
+      "description" : "Stores the state of each AKD namespace being audited",
+      "documentation" : { },
+      "id" : "3",
+      "location" : "Unspecified",
+      "name" : "Namespace Storage",
+      "properties" : {
+        "structurizr.dsl.identifier" : "namespace_storage"
+      },
+      "tags" : "Element,Software System"
+    }, {
+      "description" : "Stores signatures of audit proofs, publicly accessible",
+      "documentation" : { },
+      "id" : "4",
+      "location" : "Unspecified",
+      "name" : "Signature Storage",
+      "properties" : {
+        "structurizr.dsl.identifier" : "signature_storage"
+      },
+      "tags" : "Element,Software System"
+    }, {
+      "description" : "Stores the private key used to sign audit proofs",
+      "documentation" : { },
+      "id" : "5",
+      "location" : "Unspecified",
+      "name" : "Key Storage",
+      "properties" : {
+        "structurizr.dsl.identifier" : "key_storage"
+      },
+      "tags" : "Element,Software System"
+    }, {
       "containers" : [ {
+        "components" : [ {
+          "description" : "The main application thread handler for the auditor",
+          "documentation" : { },
+          "id" : "8",
+          "name" : "Application",
+          "properties" : {
+            "structurizr.dsl.identifier" : "akd_watch.auditor.app"
+          },
+          "relationships" : [ {
+            "description" : "Creates and manages namespace auditors",
+            "destinationId" : "9",
+            "id" : "10",
+            "sourceId" : "8",
+            "tags" : "Relationship",
+            "technology" : "tokio"
+          }, {
+            "description" : "Manages signing and verifying keys",
+            "destinationId" : "5",
+            "id" : "20",
+            "sourceId" : "8",
+            "tags" : "Relationship,write",
+            "technology" : "filesystem"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "Rust"
+        }, {
+          "description" : "Handles auditing a single AKD namespace",
+          "documentation" : { },
+          "id" : "9",
+          "name" : "Namespace Auditor",
+          "properties" : {
+            "structurizr.dsl.identifier" : "akd_watch.auditor.namespace_auditor"
+          },
+          "relationships" : [ {
+            "description" : "Polls for audit proofs",
+            "destinationId" : "2",
+            "id" : "11",
+            "sourceId" : "9",
+            "tags" : "Relationship",
+            "technology" : "http"
+          }, {
+            "description" : "Writes audit signatures",
+            "destinationId" : "4",
+            "id" : "14",
+            "sourceId" : "9",
+            "tags" : "Relationship,write",
+            "technology" : "filesystem"
+          }, {
+            "description" : "Manages AKD namespace state",
+            "destinationId" : "3",
+            "id" : "17",
+            "sourceId" : "9",
+            "tags" : "Relationship,write",
+            "technology" : "filesystem"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "Rust"
+        } ],
         "description" : "The component that polls the AKD for new proofs, verifies the, and signs verified proofs",
         "documentation" : { },
-        "id" : "2",
+        "id" : "7",
         "name" : "Auditor",
         "properties" : {
           "structurizr.dsl.identifier" : "akd_watch.auditor"
         },
         "relationships" : [ {
-          "description" : "Poll for and downloads audit proofs",
-          "destinationId" : "7",
-          "id" : "15",
-          "sourceId" : "2",
-          "tags" : "Relationship",
+          "description" : "Polls for audit proofs",
+          "destinationId" : "2",
+          "id" : "12",
+          "linkedRelationshipId" : "11",
+          "sourceId" : "7",
           "technology" : "http"
         }, {
-          "description" : "Writes updates to AKD namespace state",
+          "description" : "Writes audit signatures",
           "destinationId" : "4",
-          "id" : "18",
-          "sourceId" : "2",
-          "tags" : "Relationship,write"
+          "id" : "15",
+          "linkedRelationshipId" : "14",
+          "sourceId" : "7",
+          "technology" : "filesystem"
         }, {
-          "description" : "Stores audit signatures",
-          "destinationId" : "8",
-          "id" : "19",
-          "sourceId" : "2",
-          "tags" : "Relationship"
+          "description" : "Manages AKD namespace state",
+          "destinationId" : "3",
+          "id" : "18",
+          "linkedRelationshipId" : "17",
+          "sourceId" : "7",
+          "technology" : "filesystem"
+        }, {
+          "description" : "Manages signing and verifying keys",
+          "destinationId" : "5",
+          "id" : "21",
+          "linkedRelationshipId" : "20",
+          "sourceId" : "7",
+          "technology" : "filesystem"
         } ],
         "tags" : "Element,Container",
         "technology" : "Rust and reqwest"
       }, {
+        "components" : [ {
+          "description" : "Provides verifying key information about the AKD Watch instance",
+          "documentation" : { },
+          "id" : "24",
+          "name" : "Info Endpoint",
+          "properties" : {
+            "structurizr.dsl.identifier" : "akd_watch.web.info"
+          },
+          "relationships" : [ {
+            "description" : "Reads verifying keys",
+            "destinationId" : "5",
+            "id" : "28",
+            "sourceId" : "24",
+            "tags" : "Relationship,readonly",
+            "technology" : "filesystem"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "Rust with Axum"
+        }, {
+          "description" : "Returns signed audits for a given AKD (namespace) and epoch",
+          "documentation" : { },
+          "id" : "25",
+          "name" : "Audit Endpoint",
+          "properties" : {
+            "structurizr.dsl.identifier" : "akd_watch.web.audits"
+          },
+          "relationships" : [ {
+            "description" : "Reads audit signatures",
+            "destinationId" : "4",
+            "id" : "30",
+            "sourceId" : "25",
+            "tags" : "Relationship,readonly",
+            "technology" : "filesystem"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "Rust with Axum"
+        }, {
+          "description" : "Lists namespaces being audited with status information for each",
+          "documentation" : { },
+          "id" : "26",
+          "name" : "Namespaces Endpoint",
+          "properties" : {
+            "structurizr.dsl.identifier" : "akd_watch.web.namespaces"
+          },
+          "relationships" : [ {
+            "description" : "Reads AKD namespace state",
+            "destinationId" : "3",
+            "id" : "32",
+            "sourceId" : "26",
+            "tags" : "Relationship,readonly",
+            "technology" : "filesystem"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "Rust with Axum"
+        }, {
+          "description" : "Returns a single namespace's information",
+          "documentation" : { },
+          "id" : "27",
+          "name" : "Namespace Component",
+          "properties" : {
+            "structurizr.dsl.identifier" : "akd_watch.web.namespace"
+          },
+          "relationships" : [ {
+            "description" : "Reads AKD namespace state",
+            "destinationId" : "3",
+            "id" : "34",
+            "sourceId" : "27",
+            "tags" : "Relationship,readonly",
+            "technology" : "filesystem"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "Rust with Axum"
+        } ],
         "description" : "The web interface for AKD Watch",
         "documentation" : { },
-        "id" : "3",
+        "id" : "23",
         "name" : "Web",
         "properties" : {
           "structurizr.dsl.identifier" : "akd_watch.web"
         },
         "relationships" : [ {
-          "description" : "reads audit signatures",
-          "destinationId" : "8",
-          "id" : "21",
-          "sourceId" : "3",
-          "tags" : "Relationship"
+          "description" : "Reads verifying keys",
+          "destinationId" : "5",
+          "id" : "29",
+          "linkedRelationshipId" : "28",
+          "sourceId" : "23",
+          "technology" : "filesystem"
+        }, {
+          "description" : "Reads audit signatures",
+          "destinationId" : "4",
+          "id" : "31",
+          "linkedRelationshipId" : "30",
+          "sourceId" : "23",
+          "technology" : "filesystem"
+        }, {
+          "description" : "Reads AKD namespace state",
+          "destinationId" : "3",
+          "id" : "33",
+          "linkedRelationshipId" : "32",
+          "sourceId" : "23",
+          "technology" : "filesystem"
         } ],
         "tags" : "Element,Container",
         "technology" : "Rust with Axum"
       }, {
-        "description" : "Stores AKD epoch and configuration information",
-        "documentation" : { },
-        "id" : "4",
-        "name" : "Database",
-        "properties" : {
-          "structurizr.dsl.identifier" : "akd_watch.database"
+        "description" : "Application configuration data",
+        "documentation" : {
+          "sections" : [ {
+            "content" : "AKD-watch uses a layered configuration system that supports multiple sources in order of increasing priority:\n\n1. **Configuration file**: `config.toml`, `config.yaml`, or `config.json`\n2. **Environment variables** (with prefix `AKD_WATCH__`): e.g., `AKD_WATCH__SLEEP_SECONDS=30`\n\n### Configuration File\n\nSee `config.example.toml` for a complete example configuration file.\n\n#### Root Configuration Options\n\n- `bind_address`: Address to bind the web server to (defaults to `3000`, web crate only)\n- `sleep_seconds` (optional): Time to wait between audit cycles in seconds (defaults to 30, auditor crate only)\n- `data_directory`: Directory to store data files for file-based storage backends\n- `namespaces`: Array of namespace configurations to audit (auditor crate only)\n- `signing`: Signing key configuration\n- `signature_storage`: Storage backend configuration\n- `namespace_storage`: Namespace state storage configuration\n\n#### Namespace State Storage Configuration\n\nThe namespace state (e.g., last verified epochs and status) is configured using the `namespace_storage` section. This is disctinct from the Namespaces configuration, which defines initial conditions for a namespace. You can choose from:\n\n##### In-Memory Namespace Storage:\n```toml\n[namespace_storage]\ntype = \"InMemory\"\n```\n\n##### File-based Namespace Storage:\n```toml\n[namespace_storage]\ntype = \"File\"\n```\n\n#### Storage Configuration\n\nThe storage backend is configured using the `storage` section, which specifies how signatures should be persisted. You can choose from:\n\n##### In-Memory Storage:\n```toml\n[signature_storage]\ntype = \"InMemory\"\n```\n\n##### File-based Storage:\n```toml\n[signature_storage]\ntype = \"File\" \n```\n\nWhen using file-based storage:\n  ```\n  /var/lib/akd-watch/storage/signatures/namespace_name/\n  ├── 1/\n  │   └── sig\n  ├── 2/\n  │   └── sig\n  └── ...\n  ```\n  Each signature file contains a protobuf serialization of the complete signature.\n\n##### Azure Blob Storage: (coming soon)\n```toml\n[signature_storage]\ntype = \"Azure\"\naccount_name = \"your_storage_account\"\ncontainer_name = \"your_container\"\nconnection_string = \"your_connection_string\"  # Optional in config file\n```\n\n**Note:** Azure storage requires a connection string either in the config file or via the `AKD_WATCH__SIGNATURE_STORAGE__CONNECTION_STRING` environment variable. The configuration will be validated at startup to ensure the connection string is available from one of these sources.\n\n#### Signing Configuration\n\nThe signing key configuration:\n- `key_lifetime_seconds`: Lifetime of the signing key in seconds (defaults to 30 days)\n\n#### Namespace Configuration\n\nEach namespace requires:\n- `name`: Unique namespace identifier\n- `configuration_type`: Either \"WhatsAppV1\" or \"BitwardenV1\"\n- `log_directory`: Url to query for AKD proofs\n- `starting_epoch` (optional): Epoch to start auditing from (defaults to 0, only used if namespace doesn't already exist in repository)\n- `status`: Either \"Online\" or \"Disabled\"\n\n**Status Changes**:\n**Error states are preserved.** If a namespace is in `SignatureLost` or `SignatureVerificationFailed` state, the configuration cannot override it. These states indicate that there is either an issue with signature storage (`SignatureLost`) or the directory being audited failed an audit (`SignatureVerificationFailed`). Directories that are happily running can be disabled or enabled via configuration.\n\n### Environment Variables\n\nYou can override any configuration value using environment variables with the `AKD_WATCH__` prefix:\n\n```bash\nexport AKD_WATCH__SLEEP_SECONDS=60\nexport AKD_WATCH__NAMESPACES__0__NAME=\"my_namespace\"\nexport AKD_WATCH__NAMESPACES__0__CONFIGURATION_TYPE=\"BitwardenV1\"\nexport AKD_WATCH__NAMESPACES__0__STARTING_EPOCH=5\n```\n\n### Usage\n\nThe auditor will:\n1. Look for `config.toml`, `config.yaml`, or `config.json` in the current directory or in the configured path specified by the `AKD_WATCH_CONFIG_PATH` environment variable\n2. Apply any environment variable overrides\n3. Fall back to defaults for non-required settings\n\n",
+            "format" : "Markdown",
+            "order" : 1,
+            "title" : ""
+          } ]
         },
-        "relationships" : [ {
-          "description" : "Reads AKD namespace state",
-          "destinationId" : "3",
-          "id" : "17",
-          "sourceId" : "4",
-          "tags" : "Relationship,readonly"
-        } ],
-        "tags" : "Element,Container,Database",
-        "technology" : "PostgreSQL"
-      }, {
-        "description" : "Connection stings, keys, AKD namespaces and other configuration information",
-        "documentation" : { },
-        "id" : "5",
+        "id" : "41",
         "name" : "Configuration",
         "properties" : {
           "structurizr.dsl.identifier" : "akd_watch.config"
         },
         "relationships" : [ {
           "description" : "Reads configuration",
-          "destinationId" : "3",
-          "id" : "9",
-          "sourceId" : "5",
+          "destinationId" : "23",
+          "id" : "42",
+          "sourceId" : "41",
           "tags" : "Relationship,environment",
           "technology" : "environment"
         }, {
           "description" : "Reads configuration",
-          "destinationId" : "2",
-          "id" : "10",
-          "sourceId" : "5",
+          "destinationId" : "7",
+          "id" : "43",
+          "sourceId" : "41",
           "tags" : "Relationship,environment",
           "technology" : "environment"
         } ],
@@ -101,96 +354,181 @@
       } ],
       "description" : "The AKD Watch system that audits the AKD",
       "documentation" : { },
-      "id" : "1",
+      "id" : "6",
       "location" : "Unspecified",
       "name" : "AKD Watch",
       "properties" : {
         "structurizr.dsl.identifier" : "akd_watch"
       },
       "relationships" : [ {
-        "description" : "Poll for and downloads audit proofs",
-        "destinationId" : "7",
-        "id" : "16",
-        "linkedRelationshipId" : "15",
-        "sourceId" : "1",
-        "technology" : "http"
-      }, {
-        "description" : "Stores audit signatures",
-        "destinationId" : "8",
-        "id" : "20",
-        "linkedRelationshipId" : "19",
-        "sourceId" : "1"
-      } ],
-      "tags" : "Element,Software System"
-    }, {
-      "description" : "The client that depends on the AKD Watch to audit an AKD",
-      "documentation" : { },
-      "id" : "6",
-      "location" : "Unspecified",
-      "name" : "Client",
-      "properties" : {
-        "structurizr.dsl.identifier" : "client"
-      },
-      "relationships" : [ {
-        "description" : "Requests and validates audit signatures for required epochs",
-        "destinationId" : "3",
-        "id" : "11",
-        "sourceId" : "6",
-        "tags" : "Relationship",
-        "technology" : "http"
-      }, {
-        "description" : "Requests and validates audit signatures for required epochs",
-        "destinationId" : "1",
-        "id" : "12",
+        "description" : "Polls for audit proofs",
+        "destinationId" : "2",
+        "id" : "13",
         "linkedRelationshipId" : "11",
         "sourceId" : "6",
         "technology" : "http"
       }, {
-        "description" : "Requests and validates lookup and history proofs",
-        "destinationId" : "7",
-        "id" : "13",
+        "description" : "Writes audit signatures",
+        "destinationId" : "4",
+        "id" : "16",
+        "linkedRelationshipId" : "14",
         "sourceId" : "6",
-        "tags" : "Relationship",
-        "technology" : "http"
+        "technology" : "filesystem"
       }, {
-        "description" : "Requests and validates audit signatures",
-        "destinationId" : "8",
-        "id" : "14",
+        "description" : "Manages AKD namespace state",
+        "destinationId" : "3",
+        "id" : "19",
+        "linkedRelationshipId" : "17",
         "sourceId" : "6",
-        "tags" : "Relationship",
-        "technology" : "http"
+        "technology" : "filesystem"
+      }, {
+        "description" : "Manages signing and verifying keys",
+        "destinationId" : "5",
+        "id" : "22",
+        "linkedRelationshipId" : "20",
+        "sourceId" : "6",
+        "technology" : "filesystem"
       } ],
-      "tags" : "Element,Software System,Client"
-    }, {
-      "description" : "The AKD that is being audited",
-      "documentation" : { },
-      "id" : "7",
-      "location" : "Unspecified",
-      "name" : "AKD",
-      "properties" : {
-        "structurizr.dsl.identifier" : "akd"
-      },
-      "tags" : "Element,Software System,External"
-    }, {
-      "description" : "Stores signatures of audit proofs, publicly accessible",
-      "documentation" : { },
-      "id" : "8",
-      "location" : "Unspecified",
-      "name" : "Signature Storage",
-      "properties" : {
-        "structurizr.dsl.identifier" : "signature_storage"
-      },
-      "tags" : "Element,Software System,Blob Storage"
+      "tags" : "Element,Software System"
     } ]
   },
   "name" : "AKD Watch System",
   "properties" : {
-    "structurizr.dsl" : "d29ya3NwYWNlICJBS0QgV2F0Y2ggU3lzdGVtIiB7CgogICFpZGVudGlmaWVycyBoaWVyYXJjaGljYWwKCiAgbW9kZWwgewogICAgcHJvcGVydGllcyB7CiAgICAgICJzdHJ1Y3R1cml6ci5ncm91cFNlcGFyYXRvciIgIi8iCiAgICB9CgogICAgYWtkX3dhdGNoID0gc29mdHdhcmVTeXN0ZW0gIkFLRCBXYXRjaCIgewogICAgICBkZXNjcmlwdGlvbiAiVGhlIEFLRCBXYXRjaCBzeXN0ZW0gdGhhdCBhdWRpdHMgdGhlIEFLRCIKCiAgICAgIGF1ZGl0b3IgPSBjb250YWluZXIgIkF1ZGl0b3IiIHsKICAgICAgICBkZXNjcmlwdGlvbiAiVGhlIGNvbXBvbmVudCB0aGF0IHBvbGxzIHRoZSBBS0QgZm9yIG5ldyBwcm9vZnMsIHZlcmlmaWVzIHRoZSwgYW5kIHNpZ25zIHZlcmlmaWVkIHByb29mcyIKICAgICAgICB0ZWNobm9sb2d5ICJSdXN0IGFuZCByZXF3ZXN0IgogICAgICB9CgogICAgICB3ZWIgPSBjb250YWluZXIgIldlYiIgewogICAgICAgIGRlc2NyaXB0aW9uICJUaGUgd2ViIGludGVyZmFjZSBmb3IgQUtEIFdhdGNoIgogICAgICAgIHRlY2hub2xvZ3kgIlJ1c3Qgd2l0aCBBeHVtIgogICAgICB9CgogICAgICBkYXRhYmFzZSA9IGNvbnRhaW5lciAiRGF0YWJhc2UiIHsKICAgICAgICBkZXNjcmlwdGlvbiAiU3RvcmVzIEFLRCBlcG9jaCBhbmQgY29uZmlndXJhdGlvbiBpbmZvcm1hdGlvbiIKICAgICAgICB0ZWNobm9sb2d5ICJQb3N0Z3JlU1FMIgogICAgICAgIHRhZ3MgIkRhdGFiYXNlIgogICAgICB9CgogICAgICBjb25maWcgPSBjb250YWluZXIgIkNvbmZpZ3VyYXRpb24iIHsKICAgICAgICBkZXNjcmlwdGlvbiAiQ29ubmVjdGlvbiBzdGluZ3MsIGtleXMsIEFLRCBuYW1lc3BhY2VzIGFuZCBvdGhlciBjb25maWd1cmF0aW9uIGluZm9ybWF0aW9uIgogICAgICAgIHRlY2hub2xvZ3kgIkpTT04iCiAgICAgICAgdGFncyAiQ29uZmlnIgogICAgICB9CiAgICB9CgogICAgY2xpZW50ID0gc29mdHdhcmVTeXN0ZW0gIkNsaWVudCIgewogICAgICBkZXNjcmlwdGlvbiAiVGhlIGNsaWVudCB0aGF0IGRlcGVuZHMgb24gdGhlIEFLRCBXYXRjaCB0byBhdWRpdCBhbiBBS0QiCiAgICAgIHRhZ3MgIkNsaWVudCIKICAgIH0KCiAgICBha2QgPSBzb2Z0d2FyZVN5c3RlbSAiQUtEIiB7CiAgICAgIHRhZ3MgIkV4dGVybmFsIgogICAgICBkZXNjcmlwdGlvbiAiVGhlIEFLRCB0aGF0IGlzIGJlaW5nIGF1ZGl0ZWQiCiAgICB9CgogICAgc2lnbmF0dXJlX3N0b3JhZ2UgPSBzb2Z0d2FyZVN5c3RlbSAiU2lnbmF0dXJlIFN0b3JhZ2UiIHsKICAgICAgZGVzY3JpcHRpb24gIlN0b3JlcyBzaWduYXR1cmVzIG9mIGF1ZGl0IHByb29mcywgcHVibGljbHkgYWNjZXNzaWJsZSIKICAgICAgdGFncyAiQmxvYiBTdG9yYWdlIgogICAgfQoKICAgIGFrZF93YXRjaC5jb25maWcgLT4gYWtkX3dhdGNoLndlYiAiUmVhZHMgY29uZmlndXJhdGlvbiIgImVudmlyb25tZW50IiAiZW52aXJvbm1lbnQiCiAgICBha2Rfd2F0Y2guY29uZmlnIC0+IGFrZF93YXRjaC5hdWRpdG9yICJSZWFkcyBjb25maWd1cmF0aW9uIiAiZW52aXJvbm1lbnQiICJlbnZpcm9ubWVudCIKCiAgICBjbGllbnQgLT4gYWtkX3dhdGNoLndlYiAiUmVxdWVzdHMgYW5kIHZhbGlkYXRlcyBhdWRpdCBzaWduYXR1cmVzIGZvciByZXF1aXJlZCBlcG9jaHMiICJodHRwIgogICAgY2xpZW50IC0+IGFrZCAiUmVxdWVzdHMgYW5kIHZhbGlkYXRlcyBsb29rdXAgYW5kIGhpc3RvcnkgcHJvb2ZzIiAiaHR0cCIKICAgIGNsaWVudCAtPiBzaWduYXR1cmVfc3RvcmFnZSAiUmVxdWVzdHMgYW5kIHZhbGlkYXRlcyBhdWRpdCBzaWduYXR1cmVzIiAiaHR0cCIKCiAgICBha2Rfd2F0Y2guYXVkaXRvciAtPiBha2QgIlBvbGwgZm9yIGFuZCBkb3dubG9hZHMgYXVkaXQgcHJvb2ZzIiAiaHR0cCIKCiAgICBha2Rfd2F0Y2guZGF0YWJhc2UgLT4gYWtkX3dhdGNoLndlYiAiUmVhZHMgQUtEIG5hbWVzcGFjZSBzdGF0ZSIgewogICAgICB0YWdzICJyZWFkb25seSIKICAgIH0KICAgIGFrZF93YXRjaC5hdWRpdG9yIC0+IGFrZF93YXRjaC5kYXRhYmFzZSAiV3JpdGVzIHVwZGF0ZXMgdG8gQUtEIG5hbWVzcGFjZSBzdGF0ZSIgewogICAgICB0YWdzICJ3cml0ZSIKICAgIH0KCiAgICBha2Rfd2F0Y2guYXVkaXRvciAtPiBzaWduYXR1cmVfc3RvcmFnZSAiU3RvcmVzIGF1ZGl0IHNpZ25hdHVyZXMiCiAgICBha2Rfd2F0Y2gud2ViIC0+IHNpZ25hdHVyZV9zdG9yYWdlICJyZWFkcyBhdWRpdCBzaWduYXR1cmVzIgogIH0KCiAgdmlld3MgewogICAgc3lzdGVtTGFuZHNjYXBlICJha2Rfd2F0Y2giIHsKICAgICAgaW5jbHVkZSAqCiAgICB9CgogICAgY29udGFpbmVyIGFrZF93YXRjaCAiYWtkX3dhdGNoX3NlcnZlciIgewogICAgICBpbmNsdWRlICoKICAgIH0KCiAgICBjb250YWluZXIgYWtkX3dhdGNoICJha2Rfd2F0Y2hfd2ViIiB7CiAgICAgIGluY2x1ZGUgKgogICAgICBleGNsdWRlIGFrZF93YXRjaC5hdWRpdG9yCiAgICB9CgogICAgY29udGFpbmVyIGFrZF93YXRjaCAiYWtkX2F1ZGl0b3IiIHsKICAgICAgaW5jbHVkZSAqCiAgICAgIGV4Y2x1ZGUgYWtkX3dhdGNoLndlYgogICAgICBleGNsdWRlIGNsaWVudAogICAgfQoKICAgIHN0eWxlcyB7CiAgICAgIHRoZW1lIGRlZmF1bHQKICAgICAgZWxlbWVudCAiRWxlbWVudCIgewogICAgICAgIGNvbG9yICMzYzNiM2IKICAgICAgfQogICAgICBlbGVtZW50ICJQZXJzb24iIHsKICAgICAgICBiYWNrZ3JvdW5kICNkMzQ0MDcKICAgICAgICBzaGFwZSBwZXJzb24KICAgICAgfQogICAgICBlbGVtZW50ICJRdWV1ZSIgewogICAgICAgIHNoYXBlIHBpcGUKICAgICAgfQogICAgICBlbGVtZW50ICJDbGllbnQiIHsKICAgICAgICBzaGFwZSBtb2JpbGVEZXZpY2VQb3J0cmFpdAogICAgICB9CiAgICAgIGVsZW1lbnQgIldlYiIgewogICAgICAgIHNoYXBlIHdlYkJyb3dzZXIKICAgICAgfQogICAgICBlbGVtZW50ICJEYXRhYmFzZSIgewogICAgICAgIHNoYXBlIGN5bGluZGVyCiAgICAgIH0KICAgICAgZWxlbWVudCAiQmxvYiBTdG9yYWdlIiB7CiAgICAgICAgc2hhcGUgY3lsaW5kZXIKICAgICAgICBiYWNrZ3JvdW5kICMwOGFjOWMKICAgICAgfQogICAgICBlbGVtZW50ICJDb25maWciIHsKICAgICAgICBzaGFwZSBmb2xkZXIKICAgICAgICBiYWNrZ3JvdW5kICM2ODU5NTkKICAgICAgfQogICAgICAvLyBJbmRpY2F0ZXMgYSBzb2Z0d2FyZSBzeXN0ZW0gdGhhdCBpcyBleHRlcm5hbCB0byB0aGUgQUtEIFdhdGNoIHN5c3RlbQogICAgICBlbGVtZW50ICJFeHRlcm5hbCIgewogICAgICAgIGNvbG9yICMwMDAwMDAKICAgICAgICBiYWNrZ3JvdW5kICNiNWI1YjUKICAgICAgfQoKICAgICAgcmVsYXRpb25zaGlwICJlbnZpcm9ubWVudCIgewogICAgICAgIHN0eWxlIHNvbGlkCiAgICAgIH0KCiAgICAgIHJlbGF0aW9uc2hpcCAicmVhZG9ubHkiIHsKICAgICAgICBjb2xvciBibHVlCiAgICAgIH0KCiAgICAgIHJlbGF0aW9uc2hpcCAid3JpdGUiIHsKICAgICAgICBjb2xvciByZWQKICAgICAgfQogICAgfQogIH0KfQ=="
+    "structurizr.dsl" : "d29ya3NwYWNlICJBS0QgV2F0Y2ggU3lzdGVtIiB7CgogICFpZGVudGlmaWVycyBoaWVyYXJjaGljYWwKCiAgbW9kZWwgewogICAgcHJvcGVydGllcyB7CiAgICAgICJzdHJ1Y3R1cml6ci5ncm91cFNlcGFyYXRvciIgIi8iCiAgICB9CgogICAgY2xpZW50ID0gc29mdHdhcmVTeXN0ZW0gIkNsaWVudCIgewogICAgICBkZXNjcmlwdGlvbiAiVGhlIGNsaWVudCB0aGF0IGRlcGVuZHMgb24gdGhlIEFLRCBXYXRjaCB0byBhdWRpdCBhbiBBS0QiCiAgICAgIHRhZ3MgIkNsaWVudCIKICAgIH0KCiAgICBha2QgPSBzb2Z0d2FyZVN5c3RlbSAiQUtEIiB7CiAgICAgIHRhZ3MgIkV4dGVybmFsIgogICAgICBkZXNjcmlwdGlvbiAiVGhlIEFLRCB0aGF0IGlzIGJlaW5nIGF1ZGl0ZWQiCiAgICB9CgogICAgbmFtZXNwYWNlX3N0b3JhZ2UgPSBzb2Z0d2FyZVN5c3RlbSAiTmFtZXNwYWNlIFN0b3JhZ2UiIHsKICAgICAgZGVzY3JpcHRpb24gIlN0b3JlcyB0aGUgc3RhdGUgb2YgZWFjaCBBS0QgbmFtZXNwYWNlIGJlaW5nIGF1ZGl0ZWQiCiAgICB9CgogICAgc2lnbmF0dXJlX3N0b3JhZ2UgPSBzb2Z0d2FyZVN5c3RlbSAiU2lnbmF0dXJlIFN0b3JhZ2UiIHsKICAgICAgZGVzY3JpcHRpb24gIlN0b3JlcyBzaWduYXR1cmVzIG9mIGF1ZGl0IHByb29mcywgcHVibGljbHkgYWNjZXNzaWJsZSIKICAgIH0KCiAgICBrZXlfc3RvcmFnZSA9IHNvZnR3YXJlU3lzdGVtICJLZXkgU3RvcmFnZSIgewogICAgICBkZXNjcmlwdGlvbiAiU3RvcmVzIHRoZSBwcml2YXRlIGtleSB1c2VkIHRvIHNpZ24gYXVkaXQgcHJvb2ZzIgogICAgfQoKICAgIGFrZF93YXRjaCA9IHNvZnR3YXJlU3lzdGVtICJBS0QgV2F0Y2giIHsKICAgICAgZGVzY3JpcHRpb24gIlRoZSBBS0QgV2F0Y2ggc3lzdGVtIHRoYXQgYXVkaXRzIHRoZSBBS0QiCgogICAgICBhdWRpdG9yID0gY29udGFpbmVyICJBdWRpdG9yIiB7CiAgICAgICAgZGVzY3JpcHRpb24gIlRoZSBjb21wb25lbnQgdGhhdCBwb2xscyB0aGUgQUtEIGZvciBuZXcgcHJvb2ZzLCB2ZXJpZmllcyB0aGUsIGFuZCBzaWducyB2ZXJpZmllZCBwcm9vZnMiCiAgICAgICAgdGVjaG5vbG9neSAiUnVzdCBhbmQgcmVxd2VzdCIKCiAgICAgICAgYXBwID0gY29tcG9uZW50ICJBcHBsaWNhdGlvbiIgewogICAgICAgICAgZGVzY3JpcHRpb24gIlRoZSBtYWluIGFwcGxpY2F0aW9uIHRocmVhZCBoYW5kbGVyIGZvciB0aGUgYXVkaXRvciIKICAgICAgICAgIHRlY2hub2xvZ3kgIlJ1c3QiCiAgICAgICAgfQoKICAgICAgICBuYW1lc3BhY2VfYXVkaXRvciA9IGNvbXBvbmVudCAiTmFtZXNwYWNlIEF1ZGl0b3IiIHsKICAgICAgICAgIGRlc2NyaXB0aW9uICJIYW5kbGVzIGF1ZGl0aW5nIGEgc2luZ2xlIEFLRCBuYW1lc3BhY2UiCiAgICAgICAgICB0ZWNobm9sb2d5ICJSdXN0IgogICAgICAgIH0KCiAgICAgICAgYXBwIC0+IG5hbWVzcGFjZV9hdWRpdG9yICJDcmVhdGVzIGFuZCBtYW5hZ2VzIG5hbWVzcGFjZSBhdWRpdG9ycyIgInRva2lvIgogICAgICAgIG5hbWVzcGFjZV9hdWRpdG9yIC0+IGFrZCAiUG9sbHMgZm9yIGF1ZGl0IHByb29mcyIgImh0dHAiCiAgICAgICAgbmFtZXNwYWNlX2F1ZGl0b3IgLT4gc2lnbmF0dXJlX3N0b3JhZ2UgIldyaXRlcyBhdWRpdCBzaWduYXR1cmVzIiAiZmlsZXN5c3RlbSIgewogICAgICAgICAgdGFncyAid3JpdGUiCiAgICAgICAgfQogICAgICAgIG5hbWVzcGFjZV9hdWRpdG9yIC0+IG5hbWVzcGFjZV9zdG9yYWdlICJNYW5hZ2VzIEFLRCBuYW1lc3BhY2Ugc3RhdGUiICJmaWxlc3lzdGVtIiB7CiAgICAgICAgICB0YWdzICJ3cml0ZSIKICAgICAgICB9CiAgICAgICAgYXBwIC0+IGtleV9zdG9yYWdlICJNYW5hZ2VzIHNpZ25pbmcgYW5kIHZlcmlmeWluZyBrZXlzIiAiZmlsZXN5c3RlbSIgewogICAgICAgICAgdGFncyAid3JpdGUiCiAgICAgICAgfQogICAgICB9CgogICAgICB3ZWIgPSBjb250YWluZXIgIldlYiIgewogICAgICAgIGRlc2NyaXB0aW9uICJUaGUgd2ViIGludGVyZmFjZSBmb3IgQUtEIFdhdGNoIgogICAgICAgIHRlY2hub2xvZ3kgIlJ1c3Qgd2l0aCBBeHVtIgoKICAgICAgICBpbmZvID0gY29tcG9uZW50ICJJbmZvIEVuZHBvaW50IiB7CiAgICAgICAgICBkZXNjcmlwdGlvbiAiUHJvdmlkZXMgdmVyaWZ5aW5nIGtleSBpbmZvcm1hdGlvbiBhYm91dCB0aGUgQUtEIFdhdGNoIGluc3RhbmNlIgogICAgICAgICAgdGVjaG5vbG9neSAiUnVzdCB3aXRoIEF4dW0iCiAgICAgICAgfQoKICAgICAgICBhdWRpdHMgPSBjb21wb25lbnQgIkF1ZGl0IEVuZHBvaW50IiB7CiAgICAgICAgICBkZXNjcmlwdGlvbiAiUmV0dXJucyBzaWduZWQgYXVkaXRzIGZvciBhIGdpdmVuIEFLRCAobmFtZXNwYWNlKSBhbmQgZXBvY2giCiAgICAgICAgICB0ZWNobm9sb2d5ICJSdXN0IHdpdGggQXh1bSIKICAgICAgICB9CgogICAgICAgIG5hbWVzcGFjZXMgPSBjb21wb25lbnQgIk5hbWVzcGFjZXMgRW5kcG9pbnQiIHsKICAgICAgICAgIGRlc2NyaXB0aW9uICJMaXN0cyBuYW1lc3BhY2VzIGJlaW5nIGF1ZGl0ZWQgd2l0aCBzdGF0dXMgaW5mb3JtYXRpb24gZm9yIGVhY2giCiAgICAgICAgICB0ZWNobm9sb2d5ICJSdXN0IHdpdGggQXh1bSIKICAgICAgICB9CgogICAgICAgIG5hbWVzcGFjZSA9IGNvbXBvbmVudCAiTmFtZXNwYWNlIENvbXBvbmVudCIgewogICAgICAgICAgZGVzY3JpcHRpb24gIlJldHVybnMgYSBzaW5nbGUgbmFtZXNwYWNlJ3MgaW5mb3JtYXRpb24iCiAgICAgICAgICB0ZWNobm9sb2d5ICJSdXN0IHdpdGggQXh1bSIKICAgICAgICB9CgogICAgICAgIGluZm8gLT4ga2V5X3N0b3JhZ2UgIlJlYWRzIHZlcmlmeWluZyBrZXlzIiAiZmlsZXN5c3RlbSIgewogICAgICAgICAgdGFncyAicmVhZG9ubHkiCiAgICAgICAgfQogICAgICAgIGF1ZGl0cyAtPiBzaWduYXR1cmVfc3RvcmFnZSAiUmVhZHMgYXVkaXQgc2lnbmF0dXJlcyIgImZpbGVzeXN0ZW0iIHsKICAgICAgICAgIHRhZ3MgInJlYWRvbmx5IgogICAgICAgIH0KICAgICAgICBuYW1lc3BhY2VzIC0+IG5hbWVzcGFjZV9zdG9yYWdlICJSZWFkcyBBS0QgbmFtZXNwYWNlIHN0YXRlIiAiZmlsZXN5c3RlbSIgewogICAgICAgICAgdGFncyAicmVhZG9ubHkiCiAgICAgICAgfQogICAgICAgIG5hbWVzcGFjZSAtPiBuYW1lc3BhY2Vfc3RvcmFnZSAiUmVhZHMgQUtEIG5hbWVzcGFjZSBzdGF0ZSIgImZpbGVzeXN0ZW0iIHsKICAgICAgICAgIHRhZ3MgInJlYWRvbmx5IgogICAgICAgIH0KICAgICAgICBjbGllbnQgLT4gd2ViICJSZXF1ZXN0cyBhbmQgdmFsaWRhdGVzIGF1ZGl0IHNpZ25hdHVyZXMgZm9yIHJlcXVpcmVkIGVwb2NocyIgImh0dHAiCiAgICAgICAgY2xpZW50IC0+IGluZm8gIlJlcXVlc3RzIHZlcmlmeWluZyBrZXkgZGF0YSIgImh0dHAiCiAgICAgICAgY2xpZW50IC0+IGF1ZGl0cyAiUmVxdWVzdHMgYXVkaXQgc2lnbmF0dXJlcyIgImh0dHAiCiAgICAgICAgY2xpZW50IC0+IG5hbWVzcGFjZXMgIlJlcXVlc3RzIGxpc3Qgb2YgbmFtZXNwYWNlcyBiZWluZyBhdWRpdGVkIiAiaHR0cCIKICAgICAgICBjbGllbnQgLT4gbmFtZXNwYWNlICJSZXF1ZXN0cyBpbmZvcm1hdGlvbiBhYm91dCBhIHNwZWNpZmljIG5hbWVzcGFjZSIgImh0dHAiCiAgICAgIH0KCiAgICAgIGNvbmZpZyA9IGNvbnRhaW5lciAiQ29uZmlndXJhdGlvbiIgewogICAgICAgIGRlc2NyaXB0aW9uICJBcHBsaWNhdGlvbiBjb25maWd1cmF0aW9uIGRhdGEiCiAgICAgICAgIWRvY3MgIi4uL0NPTkZJR1VSQVRJT04ubWQiCiAgICAgICAgdGVjaG5vbG9neSAiSlNPTiIKICAgICAgICB0YWdzICJDb25maWciCiAgICAgIH0KICAgICAgY29uZmlnIC0+IHdlYiAiUmVhZHMgY29uZmlndXJhdGlvbiIgImVudmlyb25tZW50IiAiZW52aXJvbm1lbnQiCiAgICAgIGNvbmZpZyAtPiBhdWRpdG9yICJSZWFkcyBjb25maWd1cmF0aW9uIiAiZW52aXJvbm1lbnQiICJlbnZpcm9ubWVudCIKICAgIH0KCiAgICBjbGllbnQgLT4gYWtkICJSZXF1ZXN0cyBjb25maWd1cmF0aW9uIGluZm9ybWF0aW9uIHRvIHVzZSBpbiBzaWduYXR1cmUgdmFsaWRhdGlvbiIgImh0dHAiCiAgICBjbGllbnQgLT4gc2lnbmF0dXJlX3N0b3JhZ2UgIk1heSBkaXJlY3RseSByZXF1ZXN0IHNpZ25hdHVyZXMgaWYgc3RvcmFnZSBpcyBwdWJsaWMiICJodHRwIgogIH0KCiAgdmlld3MgewogICAgc3lzdGVtTGFuZHNjYXBlICJha2Rfd2F0Y2giIHsKICAgICAgaW5jbHVkZSAqCiAgICAgIC8vIGF1dG9sYXlvdXQgdGIKICAgIH0KCiAgICBjb250YWluZXIgYWtkX3dhdGNoICJha2Rfd2F0Y2hfc2VydmVyIiB7CiAgICAgIGluY2x1ZGUgKgogICAgICAvLyBhdXRvbGF5b3V0IHRiCiAgICB9CgogICAgY29udGFpbmVyIGFrZF93YXRjaCAiYWtkX3dhdGNoX3dlYiIgewogICAgICBpbmNsdWRlICoKICAgICAgZXhjbHVkZSBha2Rfd2F0Y2guYXVkaXRvcgogICAgICAvLyBhdXRvbGF5b3V0IHRiCiAgICB9CgogICAgY29udGFpbmVyIGFrZF93YXRjaCAiYWtkX2F1ZGl0b3IiIHsKICAgICAgaW5jbHVkZSAqCiAgICAgIGV4Y2x1ZGUgYWtkX3dhdGNoLndlYgogICAgICBleGNsdWRlIGNsaWVudAogICAgICAvLyBhdXRvbGF5b3V0IHRiCiAgICB9CgogICAgY29tcG9uZW50IGFrZF93YXRjaC53ZWIgImFrZF93YXRjaF93ZWJfY29tcG9uZW50cyIgewogICAgICBpbmNsdWRlICoKICAgICAgLy8gYXV0b2xheW91dCB0YgogICAgfQoKICAgIGNvbXBvbmVudCBha2Rfd2F0Y2guYXVkaXRvciAiYWtkX3dhdGNoX2F1ZGl0b3JfY29tcG9uZW50cyIgewogICAgICBpbmNsdWRlICoKICAgICAgYXV0b2xheW91dCB0YgogICAgfQoKICAgIHN0eWxlcyB7CiAgICAgIHRoZW1lIGRlZmF1bHQKICAgICAgZWxlbWVudCAiRWxlbWVudCIgewogICAgICAgIGNvbG9yICMzYzNiM2IKICAgICAgfQogICAgICBlbGVtZW50ICJQZXJzb24iIHsKICAgICAgICBiYWNrZ3JvdW5kICNkMzQ0MDcKICAgICAgICBzaGFwZSBwZXJzb24KICAgICAgfQogICAgICBlbGVtZW50ICJRdWV1ZSIgewogICAgICAgIHNoYXBlIHBpcGUKICAgICAgfQogICAgICBlbGVtZW50ICJDbGllbnQiIHsKICAgICAgICBzaGFwZSBtb2JpbGVEZXZpY2VQb3J0cmFpdAogICAgICB9CiAgICAgIGVsZW1lbnQgIldlYiIgewogICAgICAgIHNoYXBlIHdlYkJyb3dzZXIKICAgICAgfQogICAgICBlbGVtZW50ICJEYXRhYmFzZSIgewogICAgICAgIHNoYXBlIGN5bGluZGVyCiAgICAgIH0KICAgICAgZWxlbWVudCAiQmxvYiBTdG9yYWdlIiB7CiAgICAgICAgc2hhcGUgY3lsaW5kZXIKICAgICAgICBiYWNrZ3JvdW5kICMwOGFjOWMKICAgICAgfQogICAgICBlbGVtZW50ICJDb25maWciIHsKICAgICAgICBzaGFwZSBmb2xkZXIKICAgICAgICBiYWNrZ3JvdW5kICM2ODU5NTkKICAgICAgfQogICAgICAvLyBJbmRpY2F0ZXMgYSBzb2Z0d2FyZSBzeXN0ZW0gdGhhdCBpcyBleHRlcm5hbCB0byB0aGUgQUtEIFdhdGNoIHN5c3RlbQogICAgICBlbGVtZW50ICJFeHRlcm5hbCIgewogICAgICAgIGNvbG9yICMwMDAwMDAKICAgICAgICBiYWNrZ3JvdW5kICNiNWI1YjUKICAgICAgfQoKICAgICAgcmVsYXRpb25zaGlwICJlbnZpcm9ubWVudCIgewogICAgICAgIHN0eWxlIHNvbGlkCiAgICAgIH0KCiAgICAgIHJlbGF0aW9uc2hpcCAicmVhZG9ubHkiIHsKICAgICAgICBjb2xvciBibHVlCiAgICAgIH0KCiAgICAgIHJlbGF0aW9uc2hpcCAid3JpdGUiIHsKICAgICAgICBjb2xvciByZWQKICAgICAgfQogICAgfQogIH0KfQ=="
   },
   "views" : {
+    "componentViews" : [ {
+      "containerId" : "23",
+      "dimensions" : {
+        "height" : 2000,
+        "width" : 3458
+      },
+      "elements" : [ {
+        "id" : "1",
+        "x" : 1304,
+        "y" : 165
+      }, {
+        "id" : "3",
+        "x" : 2412,
+        "y" : 1465
+      }, {
+        "id" : "4",
+        "x" : 199,
+        "y" : 1465
+      }, {
+        "id" : "5",
+        "x" : 1287,
+        "y" : 1465
+      }, {
+        "id" : "24",
+        "x" : 1287,
+        "y" : 865
+      }, {
+        "id" : "25",
+        "x" : 537,
+        "y" : 865
+      }, {
+        "id" : "26",
+        "x" : 2787,
+        "y" : 865
+      }, {
+        "id" : "27",
+        "x" : 2037,
+        "y" : 865
+      } ],
+      "externalContainerBoundariesVisible" : false,
+      "key" : "akd_watch_web_components",
+      "order" : 5,
+      "relationships" : [ {
+        "id" : "28"
+      }, {
+        "id" : "30"
+      }, {
+        "id" : "32"
+      }, {
+        "id" : "34"
+      }, {
+        "id" : "37"
+      }, {
+        "id" : "38"
+      }, {
+        "id" : "39",
+        "vertices" : [ {
+          "x" : 2637,
+          "y" : 761
+        } ]
+      }, {
+        "id" : "40"
+      }, {
+        "id" : "45",
+        "position" : 60,
+        "vertices" : [ {
+          "x" : 358,
+          "y" : 761
+        }, {
+          "x" : 358,
+          "y" : 1269
+        } ]
+      } ]
+    }, {
+      "automaticLayout" : {
+        "applied" : true,
+        "edgeSeparation" : 0,
+        "implementation" : "Graphviz",
+        "nodeSeparation" : 300,
+        "rankDirection" : "TopBottom",
+        "rankSeparation" : 300,
+        "vertices" : false
+      },
+      "containerId" : "7",
+      "dimensions" : {
+        "height" : 1920,
+        "width" : 2350
+      },
+      "elements" : [ {
+        "id" : "2",
+        "x" : 200,
+        "y" : 1385
+      }, {
+        "id" : "3",
+        "x" : 950,
+        "y" : 1385
+      }, {
+        "id" : "4",
+        "x" : 1700,
+        "y" : 1385
+      }, {
+        "id" : "5",
+        "x" : 1700,
+        "y" : 785
+      }, {
+        "id" : "8",
+        "x" : 950,
+        "y" : 185
+      }, {
+        "id" : "9",
+        "x" : 950,
+        "y" : 785
+      } ],
+      "externalContainerBoundariesVisible" : false,
+      "key" : "akd_watch_auditor_components",
+      "order" : 6,
+      "relationships" : [ {
+        "id" : "10"
+      }, {
+        "id" : "11"
+      }, {
+        "id" : "14"
+      }, {
+        "id" : "17"
+      }, {
+        "id" : "20"
+      } ]
+    } ],
     "configuration" : {
       "branding" : { },
-      "lastSavedView" : "akd_watch_server",
+      "lastSavedView" : "akd_watch_auditor_components",
+      "metadataSymbols" : "SquareBrackets",
       "styles" : {
         "elements" : [ {
           "color" : "#3c3b3b",
@@ -240,207 +578,249 @@
     },
     "containerViews" : [ {
       "dimensions" : {
-        "height" : 2256,
-        "width" : 3095
+        "height" : 1920,
+        "width" : 3100
       },
       "elements" : [ {
+        "id" : "1",
+        "x" : 1842,
+        "y" : 185
+      }, {
         "id" : "2",
-        "x" : 220,
-        "y" : 625
+        "x" : 2450,
+        "y" : 1385
       }, {
         "id" : "3",
-        "x" : 920,
-        "y" : 1175
+        "x" : 200,
+        "y" : 1385
       }, {
         "id" : "4",
-        "x" : 220,
-        "y" : 1630
+        "x" : 1700,
+        "y" : 1385
       }, {
         "id" : "5",
-        "x" : 920,
-        "y" : 60
-      }, {
-        "id" : "6",
-        "x" : 2595,
-        "y" : 550
+        "x" : 950,
+        "y" : 1385
       }, {
         "id" : "7",
-        "x" : 1764,
-        "y" : 60
+        "x" : 1163,
+        "y" : 785
       }, {
-        "id" : "8",
-        "x" : 1770,
-        "y" : 625
+        "id" : "23",
+        "x" : 413,
+        "y" : 785
+      }, {
+        "id" : "41",
+        "x" : 750,
+        "y" : 185
       } ],
       "externalSoftwareSystemBoundariesVisible" : false,
       "key" : "akd_watch_server",
       "order" : 2,
       "relationships" : [ {
-        "id" : "10"
+        "id" : "12"
       }, {
-        "id" : "11",
+        "id" : "15"
+      }, {
+        "id" : "18",
+        "position" : 20,
         "vertices" : [ {
-          "x" : 2090,
-          "y" : 1200
+          "x" : 800,
+          "y" : 1230
         } ]
       }, {
-        "id" : "13"
+        "id" : "21",
+        "position" : 35
       }, {
-        "id" : "14"
-      }, {
-        "id" : "15",
-        "position" : 55
-      }, {
-        "id" : "17"
-      }, {
-        "id" : "18"
-      }, {
-        "id" : "19",
-        "position" : 55
-      }, {
-        "id" : "21"
-      }, {
-        "id" : "9",
+        "id" : "29",
         "position" : 70
+      }, {
+        "id" : "31",
+        "position" : 60,
+        "vertices" : [ {
+          "x" : 1013,
+          "y" : 1189
+        }, {
+          "x" : 1550,
+          "y" : 1385
+        } ]
+      }, {
+        "id" : "33"
+      }, {
+        "id" : "35",
+        "position" : 40
+      }, {
+        "id" : "42"
+      }, {
+        "id" : "43",
+        "position" : 45
+      }, {
+        "id" : "44"
+      }, {
+        "id" : "45"
       } ],
-      "softwareSystemId" : "1"
+      "softwareSystemId" : "6"
     }, {
       "dimensions" : {
-        "height" : 2256,
-        "width" : 3095
+        "height" : 1920,
+        "width" : 3100
       },
       "elements" : [ {
+        "id" : "1",
+        "x" : 1841,
+        "y" : 185
+      }, {
+        "id" : "2",
+        "x" : 2449,
+        "y" : 1385
+      }, {
         "id" : "3",
-        "x" : 920,
-        "y" : 1175
+        "x" : 199,
+        "y" : 1385
       }, {
         "id" : "4",
-        "x" : 220,
-        "y" : 1630
+        "x" : 1699,
+        "y" : 1385
       }, {
         "id" : "5",
-        "x" : 920,
-        "y" : 60
+        "x" : 949,
+        "y" : 1385
       }, {
-        "id" : "6",
-        "x" : 2595,
-        "y" : 550
+        "id" : "23",
+        "x" : 412,
+        "y" : 785
       }, {
-        "id" : "7",
-        "x" : 1764,
-        "y" : 60
-      }, {
-        "id" : "8",
-        "x" : 1770,
-        "y" : 625
+        "id" : "41",
+        "x" : 749,
+        "y" : 185
       } ],
       "externalSoftwareSystemBoundariesVisible" : false,
       "key" : "akd_watch_web",
       "order" : 3,
       "relationships" : [ {
-        "id" : "11",
+        "id" : "29"
+      }, {
+        "id" : "31",
         "vertices" : [ {
-          "x" : 2090,
-          "y" : 1200
+          "x" : 1573,
+          "y" : 1369
         } ]
       }, {
-        "id" : "13"
+        "id" : "33"
       }, {
-        "id" : "14"
+        "id" : "35",
+        "vertices" : [ {
+          "x" : 1791,
+          "y" : 485
+        }, {
+          "x" : 1012,
+          "y" : 785
+        } ]
       }, {
-        "id" : "17"
+        "id" : "42"
       }, {
-        "id" : "21"
+        "id" : "44"
       }, {
-        "id" : "9",
-        "position" : 70
+        "id" : "45"
       } ],
-      "softwareSystemId" : "1"
+      "softwareSystemId" : "6"
     }, {
       "dimensions" : {
-        "height" : 2256,
-        "width" : 3095
+        "height" : 1920,
+        "width" : 3100
       },
       "elements" : [ {
         "id" : "2",
-        "x" : 220,
-        "y" : 625
+        "x" : 2450,
+        "y" : 1385
+      }, {
+        "id" : "3",
+        "x" : 200,
+        "y" : 1385
       }, {
         "id" : "4",
-        "x" : 220,
-        "y" : 1630
+        "x" : 1700,
+        "y" : 1385
       }, {
         "id" : "5",
-        "x" : 920,
-        "y" : 60
+        "x" : 950,
+        "y" : 1385
       }, {
         "id" : "7",
-        "x" : 1764,
-        "y" : 60
+        "x" : 1163,
+        "y" : 785
       }, {
-        "id" : "8",
-        "x" : 1770,
-        "y" : 625
+        "id" : "41",
+        "x" : 750,
+        "y" : 185
       } ],
       "externalSoftwareSystemBoundariesVisible" : false,
       "key" : "akd_auditor",
       "order" : 4,
       "relationships" : [ {
-        "id" : "10"
+        "id" : "12"
       }, {
-        "id" : "15",
-        "position" : 55
+        "id" : "15"
       }, {
         "id" : "18"
       }, {
-        "id" : "19",
-        "position" : 55
+        "id" : "21"
+      }, {
+        "id" : "43"
       } ],
-      "softwareSystemId" : "1"
+      "softwareSystemId" : "6"
     } ],
     "systemLandscapeViews" : [ {
       "dimensions" : {
-        "height" : 1900,
-        "width" : 1877
+        "height" : 2010,
+        "width" : 3100
       },
       "elements" : [ {
         "id" : "1",
-        "x" : 667,
-        "y" : 882
-      }, {
-        "id" : "6",
-        "x" : 729,
+        "x" : 1185,
         "y" : 165
       }, {
-        "id" : "7",
-        "x" : 1227,
-        "y" : 1362
+        "id" : "2",
+        "x" : 199,
+        "y" : 1475
       }, {
-        "id" : "8",
-        "x" : 200,
-        "y" : 1365
+        "id" : "3",
+        "x" : 949,
+        "y" : 1475
+      }, {
+        "id" : "4",
+        "x" : 2449,
+        "y" : 1475
+      }, {
+        "id" : "5",
+        "x" : 1699,
+        "y" : 1475
+      }, {
+        "id" : "6",
+        "x" : 1153,
+        "y" : 875
       } ],
       "enterpriseBoundaryVisible" : true,
       "key" : "akd_watch",
       "order" : 1,
       "relationships" : [ {
-        "id" : "12"
-      }, {
-        "id" : "13",
-        "vertices" : [ {
-          "x" : 1329,
-          "y" : 765
-        } ]
-      }, {
-        "id" : "14",
-        "vertices" : [ {
-          "x" : 527,
-          "y" : 727
-        } ]
+        "id" : "13"
       }, {
         "id" : "16"
       }, {
-        "id" : "20"
+        "id" : "19"
+      }, {
+        "id" : "22"
+      }, {
+        "id" : "36"
+      }, {
+        "id" : "44",
+        "vertices" : [ {
+          "x" : 1003,
+          "y" : 875
+        } ]
+      }, {
+        "id" : "45"
       } ]
     } ]
   }
