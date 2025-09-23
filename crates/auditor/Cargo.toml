@@ -19,7 +19,7 @@ anyhow = { workspace = true }
 chrono = { workspace = true }
 config = { workspace = true }
 ed25519-dalek = { workspace = true }
-futures-util = "0.3.31"
+futures-util = "=0.3.31"
 rand = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }

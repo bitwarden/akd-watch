@@ -11,7 +11,7 @@ keywords.workspace = true
 akd = { workspace = true }
 akd_watch_common = { workspace = true }
 anyhow = { workspace = true }
-axum = { version = "0.7", features = ["macros"] }
+axum = { version = "=0.7.9", features = ["macros"] }
 config = { workspace = true }
 hex = { workspace = true }
 serde = { workspace = true }
