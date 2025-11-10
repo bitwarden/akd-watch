@@ -24,6 +24,8 @@ jobs:
     steps:
       - name: Check out repo
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
 
       - name: Set Rust toolchain
         id: toolchain
@@ -51,15 +53,19 @@ jobs:
           sudo apt -y install protobuf-compiler
 
       - name: Install Rust nightly
+        env:
+          _RUST_NIGHTLY_TOOLCHAIN: ${{ steps.nightly-toolchain.outputs.RUST_NIGHTLY_TOOLCHAIN }}
         run: |
-          rustup toolchain install "${{ steps.nightly-toolchain.outputs.RUST_NIGHTLY_TOOLCHAIN }}"
-          rustup component add rustfmt --toolchain "${{ steps.nightly-toolchain.outputs.RUST_NIGHTLY_TOOLCHAIN }}"-x86_64-unknown-linux-gnu
+          rustup toolchain install "${_RUST_NIGHTLY_TOOLCHAIN}}"
+          rustup component add rustfmt --toolchain "${_RUST_NIGHTLY_TOOLCHAIN}"-x86_64-unknown-linux-gnu
 
       - name: Cache Cargo registry
         uses: Swatinem/rust-cache@f0deed1e0edfc6a9be95417288c0e1099b1eeec3 # v2.7.7
 
       - name: Cargo fmt
-        run: cargo +"${{ steps.nightly-toolchain.outputs.RUST_NIGHTLY_TOOLCHAIN }}" fmt --check
+        env:
+          _RUST_NIGHTLY_TOOLCHAIN: ${{ steps.nightly-toolchain.outputs.RUST_NIGHTLY_TOOLCHAIN }}
+        run: cargo +"${_RUST_NIGHTLY_TOOLCHAIN}" fmt --check
 
       - name: Install clippy-sarif and sarif-fmt
         run: cargo install clippy-sarif sarif-fmt --locked --git https://github.com/psastras/sarif-rs.git --rev 11c33a53f6ffeaed736856b86fb6b7b09fabdfd8
