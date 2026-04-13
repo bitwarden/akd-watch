@@ -2,7 +2,7 @@
 # This version optimizes for build cache efficiency
 
 # Stage 1: Build dependencies
-FROM rust:1.88.0-alpine3.20 AS chef
+FROM rust:1.94.1-alpine3.20 AS chef
 RUN apk add --no-cache musl-dev && cargo install cargo-chef
 WORKDIR /app
 
