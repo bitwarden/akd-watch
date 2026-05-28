@@ -1,17 +1,12 @@
 use std::vec;
 
-use akd_watch_common::{crypto::VerifyingKey, storage::signing_keys::VerifyingKeyRepository};
+use akd_watch_common::{
+    storage::signing_keys::VerifyingKeyRepository, web_api::ServerConfiguration,
+};
 use axum::Json;
-use serde::{Deserialize, Serialize};
 use tracing::{error, info, instrument};
 
 use crate::AppState;
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ServerConfiguration {
-    keys: Vec<KeyInfo>,
-    // Other configuration info
-}
 
 #[instrument(skip_all)]
 pub async fn info_handler(
@@ -30,23 +25,6 @@ pub async fn info_handler(
         })
         .iter()
         .map(|key| key.into())
-        .collect::<Vec<KeyInfo>>();
+        .collect();
     Json(ServerConfiguration { keys })
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
-pub struct KeyInfo {
-    public_key: String,
-    key_id: String,
-    not_before: u64,
-}
-
-impl From<&VerifyingKey> for KeyInfo {
-    fn from(key: &VerifyingKey) -> Self {
-        Self {
-            public_key: hex::encode(key.verifying_key),
-            key_id: key.key_id.to_string(),
-            not_before: key.not_before.timestamp() as u64,
-        }
-    }
 }

@@ -15,6 +15,7 @@ path = "src/lib.rs"
 akd = { workspace = true }
 akd_core = { workspace = true }
 akd_watch_common = { workspace = true }
+akd_watch_protocol = { workspace = true }
 anyhow = { workspace = true }
 chrono = { workspace = true }
 config = { workspace = true }

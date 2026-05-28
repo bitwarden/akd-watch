@@ -91,6 +91,7 @@ dependencies = [
  "akd",
  "akd_core",
  "akd_watch_common",
+ "akd_watch_protocol",
  "anyhow",
  "chrono",
  "config",
@@ -109,14 +110,13 @@ name = "akd_watch_common"
 version = "0.1.0"
 dependencies = [
  "akd",
+ "akd_watch_protocol",
  "bincode",
  "chrono",
  "config",
  "ed25519-dalek",
  "hex",
  "mockito",
- "prost",
- "prost-build",
  "quick-xml",
  "rand 0.9.3",
  "reqwest",
@@ -126,6 +126,24 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
+ "uuid",
+]
+
+[[package]]
+name = "akd_watch_protocol"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "chrono",
+ "ed25519-dalek",
+ "hex",
+ "prost",
+ "prost-build",
+ "rand 0.9.3",
+ "serde",
+ "thiserror 2.0.12",
+ "tokio",
+ "tracing",
  "uuid",
 ]
 
