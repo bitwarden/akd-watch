@@ -1,8 +1,8 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file contains behavioral instructions for Claude when working in this repository. All user-facing documentation is in README.md.
 
-## What this is
+## Core Behavioral Guidelines
 
 `akd-watch` audits Auditable Key Directories (AKDs) for integrity, protecting against split-world attacks in key transparency systems. It is a Rust workspace with four crates:
 
