@@ -158,7 +158,7 @@ mod tests {
     #[test]
     fn test_ciphersuite_bincode_encode() {
         fn bincode(cs: Ciphersuite) -> Vec<u8> {
-            bincode::encode_to_vec(cs, crate::BINCODE_CONFIG).unwrap()
+            bincode::encode_to_vec(cs, crate::BINCODE_CONFIG).expect("encode")
         }
 
         assert_eq!(bincode(Ciphersuite::ProtobufEd25519), vec![1]);
@@ -170,7 +170,7 @@ mod tests {
     fn test_ciphersuite_bincode_decode() {
         fn decode(bytes: &[u8]) -> Ciphersuite {
             bincode::decode_from_slice::<Ciphersuite, _>(bytes, crate::BINCODE_CONFIG)
-                .unwrap()
+                .expect("decode")
                 .0
         }
 

@@ -1,8 +1,7 @@
 use tracing::{instrument, trace};
 
 use crate::{
-    BINCODE_CONFIG,
-    epoch_signature::EpochSignature,
+    BINCODE_CONFIG, EpochSignature,
     storage::signatures::{
         SignatureRepository, SignatureRepositoryError, SignatureStorageFileError,
     },

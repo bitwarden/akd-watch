@@ -1,5 +1,5 @@
 pub mod types {
-    include!(concat!(env!("OUT_DIR"), "/akd_watch_common.types.rs"));
+    include!(concat!(env!("OUT_DIR"), "/akd_watch_protocol.types.rs"));
 }
 
 #[derive(Debug, thiserror::Error)]

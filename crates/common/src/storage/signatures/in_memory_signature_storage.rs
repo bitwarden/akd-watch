@@ -4,7 +4,7 @@ use std::{
 };
 
 use crate::{
-    epoch_signature::EpochSignature,
+    EpochSignature,
     storage::signatures::{SignatureRepository, SignatureRepositoryError},
 };
 

@@ -30,6 +30,8 @@ pub enum AuditError {
     SignatureStorageError(#[from] akd_watch_common::storage::signatures::SignatureRepositoryError),
     #[error("{0}")]
     VerifyError(#[from] akd_watch_common::VerifyError),
+    #[error("Verify epoch signature failed: {0}")]
+    VerifyEpochSignature(#[from] akd_watch_common::VerifyEpochSignatureError),
     #[error("Local Auditor error: {0:?}")]
     LocalAuditorError(akd::local_auditing::LocalAuditorError),
     #[error("Failed parsing blob hash: {0}")]

@@ -1,8 +1,8 @@
 use akd_watch_common::{
     Epoch, NamespaceInfo, NamespaceStatus,
-    akd_configurations::AkdConfiguration,
     config::{NamespaceStorageConfig, SignatureStorageConfig, SigningConfig},
 };
+use akd_watch_protocol::AkdConfiguration;
 use config::{Config, ConfigError, Environment, File};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -264,7 +264,7 @@ fn default_sleep_seconds() -> u64 {
 
 #[cfg(test)]
 mod tests {
-    use akd_watch_common::akd_configurations::AkdConfiguration;
+    use akd_watch_protocol::AkdConfiguration;
 
     use super::*;
 

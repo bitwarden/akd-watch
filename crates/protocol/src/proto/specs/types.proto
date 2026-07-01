@@ -1,5 +1,5 @@
 syntax = "proto2";
-package akd_watch_common.types;
+package akd_watch_protocol.types;
 
 message Epoch {
     required uint64 inner = 1;
