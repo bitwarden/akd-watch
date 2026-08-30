@@ -1,6 +1,7 @@
+use akd_watch_protocol::AkdConfiguration;
+
 use crate::{
     NamespaceInfo,
-    akd_configurations::AkdConfiguration,
     storage::{AkdStorage, whatsapp_akd_storage::WhatsAppAkdStorage},
 };
 

@@ -365,7 +365,7 @@ where
             // Verify the signature
             let singing_key_repository = self.signing_key_repository.read().await;
             let verifying_repo = singing_key_repository.verifying_key_repository()?;
-            signature.verify(&verifying_repo).await?;
+            akd_watch_common::verify_epoch_signature(&signature, &verifying_repo).await?;
 
             Ok(Some(signature))
         } else {
@@ -480,10 +480,10 @@ mod tests {
     use super::*;
     use akd_watch_common::{
         Epoch, NamespaceStatus,
-        akd_configurations::AkdConfiguration,
         storage::test_akd_storage::TestAkdStorage,
         testing::{MockNamespaceRepository, MockSignatureStorage, MockSigningKeyRepository},
     };
+    use akd_watch_protocol::AkdConfiguration;
     use tokio::sync::broadcast::{self, Receiver, Sender};
 
     /// Helper to create test namespace

@@ -11,13 +11,11 @@ use crate::{
     Ciphersuite, Epoch, NamespaceInfo,
     crypto::{SigningKey, VerifyingKey},
     error::SerializationError,
-    storage::signing_keys::VerifyingKeyRepository,
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize, Encode, Decode)]
 #[serde(tag = "audit_version")]
 pub enum EpochSignature {
-    #[allow(private_interfaces)]
     V1(EpochSignatureV1),
 }
 
@@ -51,24 +49,16 @@ pub enum VerifyError {
     SerializationError(#[from] SerializationError),
     #[error("Verifying key not found with key id: {0}")]
     VerifyingKeyNotFound(Uuid),
-    #[error("Verifying key repository error: {0}")]
-    VerifyingKeyRepositoryError(#[from] crate::storage::signing_keys::VerifyingKeyRepositoryError),
 }
 
 #[derive(Debug, thiserror::Error)]
 pub enum SignError {
-    // #[error("Signing error: {0}")]
-    // SigningError(String),
     #[error("Serialization error: {0}")]
     SerializationError(#[from] SerializationError),
-    // #[error("Signing key repository error: {0}")]
-    // SigningKeyRepositoryError(#[from] crate::storage::signing_keys::SigningKeyRepositoryError),
-    // #[error("Generic error: {0}")]
-    // GenericError(String),
 }
 
 impl EpochSignatureV1 {
-    fn verify(&self, verifying_key: &VerifyingKey) -> Result<(), VerifyError> {
+    pub(crate) fn verify(&self, verifying_key: &VerifyingKey) -> Result<(), VerifyError> {
         let message = self.to_message().to_vec()?;
 
         let signature =
@@ -172,18 +162,13 @@ impl EpochSignature {
         }
     }
 
-    pub async fn verify(
-        &self,
-        verifying_key_repo: &impl VerifyingKeyRepository,
-    ) -> Result<(), VerifyError> {
-        let signing_key_id = self.signing_key_id();
-        let verifying_key = verifying_key_repo
-            .get_verifying_key(signing_key_id)
-            .await?
-            .ok_or_else(|| VerifyError::VerifyingKeyNotFound(signing_key_id))?;
-
+    /// Verify the signature against a specific verifying key. Use this when
+    /// the caller has already resolved the trusted key (e.g. an HTTP client
+    /// that fetched the publisher's key set). For the repository-based
+    /// lookup variant, see `akd_watch_common::verify_epoch_signature`.
+    pub fn verify_with_key(&self, verifying_key: &VerifyingKey) -> Result<(), VerifyError> {
         match self {
-            EpochSignature::V1(signature) => signature.verify(&verifying_key),
+            EpochSignature::V1(signature) => signature.verify(verifying_key),
         }
     }
 }

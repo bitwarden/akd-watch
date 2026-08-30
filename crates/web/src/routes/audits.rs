@@ -1,41 +1,8 @@
-use akd_watch_common::{
-    Ciphersuite, Epoch, EpochSignature, storage::signatures::SignatureRepository,
-};
+use akd_watch_common::{storage::signatures::SignatureRepository, web_api::SignatureResponse};
 use axum::Json;
-use serde::{Deserialize, Serialize};
 use tracing::{info, instrument, trace};
 
 use crate::{AppState, error::ApiError};
-
-#[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
-pub struct SignatureResponse {
-    version: u32,
-    ciphersuite: Ciphersuite,
-    namespace: String,
-    timestamp: u64,
-    epoch: Epoch,
-    digest: String,
-    signature: String,
-    key_id: String,
-}
-
-impl From<EpochSignature> for SignatureResponse {
-    fn from(signature: EpochSignature) -> Self {
-        let version = signature.version_int();
-        match signature {
-            EpochSignature::V1(sig) => SignatureResponse {
-                version,
-                ciphersuite: sig.ciphersuite,
-                namespace: sig.namespace,
-                timestamp: sig.timestamp as u64,
-                epoch: sig.epoch,
-                digest: hex::encode(sig.digest),
-                signature: hex::encode(sig.signature),
-                key_id: sig.key_id.to_string(),
-            },
-        }
-    }
-}
 
 #[instrument(skip_all, fields(namespace = %namespace, epoch))]
 pub async fn audit_query_handler(

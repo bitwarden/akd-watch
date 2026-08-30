@@ -1,13 +1,6 @@
 use akd::{DomainLabel, WhatsAppV1Configuration, errors::AkdError};
+use akd_watch_protocol::AkdConfiguration;
 use serde::{Deserialize, Serialize};
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub enum AkdConfiguration {
-    WhatsAppV1Configuration,
-    BitwardenV1Configuration,
-    #[cfg(any(test, feature = "testing"))]
-    TestConfiguration,
-}
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct BitwardenV1Label;
